@@ -1,0 +1,46 @@
+{
+  "name": "yiyu-focus",
+  "version": "0.3.0",
+  "description": "一隅 Focus — 留一点时间给真正重要的事",
+  "main": "desktop/main.cjs",
+  "author": "Focus",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "node scripts/serve.cjs",
+    "test": "node --test tests/core.test.mjs tests/sync.test.mjs tests/webdav.test.cjs",
+    "test:sync-ui": "node tests/sync-ui.cjs",
+    "test:ui": "node tests/ui.cjs",
+    "test:desktop": "node tests/desktop.cjs",
+    "pack": "electron-builder --win --dir",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "local.yiyu.focus",
+    "productName": "Yiyu Focus",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "web/**/*",
+      "desktop/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "signExecutable": false,
+      "icon": "desktop/icon.ico"
+    },
+    "portable": {
+      "artifactName": "Yiyu-Focus-${version}-Windows.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "playwright": "^1.63.0"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.11.1"
+  }
+}

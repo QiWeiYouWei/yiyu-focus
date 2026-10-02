@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+  <title>一隅 Focus</title><link rel="icon" href="mark.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="polish.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#focus"><img src="mark.svg" alt=""><span>一隅 <small>FOCUS</small></span></a>
+    <div class="nav-label">给重要的事，一点时间</div>
+    <nav aria-label="主导航">
+      <button data-page="focus" class="nav active" aria-label="专注空间" aria-current="page"><span data-icon="focus"></span><span class="nav-title">专注空间</span></button>
+      <button data-page="growth" class="nav" aria-label="我的成长"><span data-icon="growth"></span><span class="nav-title">我的成长</span></button>
+      <button data-page="inbox" class="nav" aria-label="念头暂存"><span data-icon="leaf"></span><span class="nav-title">念头暂存</span><b id="inbox-count">0</b></button>
+      <button data-page="history" class="nav" aria-label="学习足迹"><span data-icon="history"></span><span class="nav-title">学习足迹</span></button>
+    </nav>
+    <div class="sidebar-bottom"><div class="small-plant"><i></i><i></i><i></i><i></i></div><p>专注不是从不分心，<br>而是一次次温柔地回来。</p><button data-page="settings" class="nav" aria-label="偏好设置"><span data-icon="settings"></span><span class="nav-title">偏好设置</span></button><div class="local-status"><span></span> 本地保存 · 属于你自己</div></div>
+  </aside>
+  <main>
+    <header><div id="breadcrumb">我的空间 <span>/</span> 专注</div><div class="header-actions"><span id="today-date"></span><button id="account-badge" class="icon-button" data-page="account">☁ 账号同步</button><button id="pin" class="icon-button" title="窗口置顶">置顶 ↗</button><button id="zen" class="icon-button" title="隐藏侧栏，减少干扰">沉浸 ◇</button></div></header>
+    <section id="page-focus" class="page">
+      <div class="page-heading"><div><div class="eyebrow">A LITTLE FOCUS, EVERY DAY</div><h1>此刻，只做一件事<span class="green-dot">.</span></h1><p>不必准备好一整天。先把接下来的几分钟，留给自己。</p></div><span class="pill">✦ 慢慢来，也是在向前</span></div>
+      <div class="focus-layout">
+        <article class="timer-card">
+          <div class="card-top"><span class="card-kicker" id="timer-mode">● 专注时间</span><button id="sound" class="text-button">提示音 开</button></div>
+          <label for="intention" class="field-label">这一次，你想完成什么？</label><input id="intention" maxlength="200" placeholder="例如：读完第 3 节，记下两个要点" autocomplete="off">
+          <div class="timer-ring"><div class="timer-halo" aria-hidden="true"></div><svg class="timer-dial" viewBox="0 0 280 280" aria-hidden="true"><circle class="ring-track" cx="140" cy="140" r="126"/><circle id="ring-progress" cx="140" cy="140" r="126"/></svg><div class="timer-content"><span class="timer-overline" id="timer-overline">留一小段时间给自己</span><div id="timer" role="timer" aria-live="off">15:00</div><span id="timer-caption">从一小步开始，就很好</span><span class="timer-leaf" data-icon="leaf"></span></div></div>
+          <div class="duration-options" aria-label="专注时长"><button data-minutes="5">5 分钟</button><button data-minutes="15" class="selected">15 分钟</button><button data-minutes="25">25 分钟</button><button data-minutes="45">45 分钟</button><label class="custom-duration"><input id="custom-minutes" type="number" min="1" max="120" aria-label="自定义分钟" placeholder="自定"> 分</label></div>
+          <button id="start" class="primary start-button">开始专注 <span>→</span></button>
+          <div class="timer-actions"><button id="distracted" class="text-button"><span data-icon="leaf"></span>我分心了，先记下来</button><button id="finish" class="text-button" hidden>提前结束</button></div>
+          <div class="gentle-tip" id="gentle-tip">把手机放远一点，给注意力留一点空间。</div>
+        </article>
+        <div class="right-column">
+          <article class="today-card"><div class="card-top"><h2>今日的小积累</h2><span class="sun" data-icon="sun"></span></div><div class="today-number"><strong id="today-minutes">0</strong><span> / <span id="daily-goal">60</span> 分钟</span></div><progress id="goal-progress" aria-label="今日专注目标完成进度" value="0" max="60"></progress><p id="goal-copy">第一段专注，从现在开始。</p><div class="today-bottom"><span><b id="today-sessions">0</b> 次专注</span><span><b id="today-streak">0</b> 天连续</span></div></article>
+          <article class="tasks-card"><div class="card-top"><h2>今天想做的事</h2><span id="task-count" class="muted">0 项</span></div><form id="task-form"><input id="task-input" maxlength="200" placeholder="写下一个小而具体的目标" aria-label="新任务" required><button class="add-button" aria-label="添加任务" data-icon="plus"></button></form><div id="task-list"></div><p class="micro-copy">点选目标，即可带入本次专注。</p></article>
+          <div class="quote-card"><span>“</span><p>不用追赶时间，<br>只要认真度过这一小段。</p><div>ONE THING AT A TIME</div></div>
+        </div>
+      </div>
+      <div class="bottom-note"><span>✧</span> 每一次把注意力带回来，都是一次练习。</div>
+    </section>
+    <section id="page-growth" class="page" hidden>
+      <div class="profile"><div class="eyebrow">GROW AT YOUR OWN PACE</div><div class="avatar" data-icon="leaf"></div><h1 id="profile-name">学习中的你</h1><p id="profile-motto"></p><span class="pill">属于你的专注旅程</span></div>
+      <div class="stat-strip" id="stat-strip"></div>
+      <article class="heatmap-card"><div class="card-top"><div><h2>专注活动</h2><p class="muted">每一格，都是留给自己的时间。</p></div><select id="heatmap-year" aria-label="热力图年份"></select></div><div class="heatmap-scroll"><div id="heatmap-months"></div><div id="heatmap"></div></div><div class="heatmap-footer"><span>累计 <b id="active-days">0</b> 个专注日 · 满 1 分钟计入连续天数</span><div>少 <i class="level-0"></i><i class="level-1"></i><i class="level-2"></i><i class="level-3"></i><i class="level-4"></i> 多</div></div></article>
+      <div class="growth-bottom"><article class="card"><h2>最近 7 天</h2><div id="week-chart"></div></article><article class="card weekly-note"><div class="eyebrow">KEEP SHOWING UP</div><h2>积累，比完美更重要。</h2><p id="weekly-summary"></p><button class="secondary" data-page="focus">再留一小段时间给自己 ↗</button></article></div>
+    </section>
+    <section id="page-inbox" class="page" hidden><div class="page-heading"><div><div class="eyebrow">LET IT WAIT</div><h1>念头先放在这里。</h1><p>想查的东西、突然的灵感、惦记的小事。先写下来，专注结束再处理。</p></div></div><form id="thought-form" class="capture-form"><input id="thought-input" maxlength="1000" placeholder="此刻，让你分心的是什么？" required aria-label="暂存念头"><button class="primary">暂存念头 ＋</button></form><div id="thought-list"></div></section>
+    <section id="page-history" class="page" hidden><div class="page-heading"><div><div class="eyebrow">SMALL STEPS MATTER</div><h1>学习，留下了足迹。</h1><p>记住你做了什么，也记住你是怎样一点点前进的。</p></div><input id="history-search" type="search" placeholder="搜索目标或收获" aria-label="搜索学习记录"></div><div id="history-list"></div></section>
+    <section id="page-settings" class="page" hidden><div class="page-heading"><div><div class="eyebrow">MAKE IT YOURS</div><h1>找到自己的节奏。</h1><p>从容易开始的长度出发，再慢慢找到适合你的节奏。</p></div></div><form id="settings-form" class="settings-card"><h2>我的资料</h2><label>昵称<input name="name" maxlength="40" required></label><label>给自己的一句话<input name="motto" maxlength="120"></label><div class="settings-grid"><label>每天想专注（分钟）<input name="goal" type="number" min="5" max="720" required></label><label>默认专注（分钟）<input name="duration" type="number" min="1" max="120" required></label><label>休息时长（分钟）<input name="breakMinutes" type="number" min="1" max="30" required></label></div><button class="primary">保存偏好</button></form><article class="settings-card motion-setting"><div><h2>轻柔动效</h2><p class="muted">让页面切换和操作反馈更自然，也会遵循系统的减少动画设置。</p></div><button id="motion-toggle" class="secondary" aria-pressed="true">已开启</button></article><article class="settings-card"><h2>数据由你保管</h2><p class="muted">记录优先保存在这台设备。连接账号后可自动同步，仍建议定期导出本地备份。</p><div class="backup-actions"><button id="export" class="secondary">导出 JSON 备份 ↗</button><button id="import" class="secondary">从备份恢复</button><input id="import-file" type="file" accept=".json,application/json" hidden></div><p class="micro-copy">关闭应用或电脑锁屏时暂停计时；重新打开后由你继续。跨午夜的专注计入结束当天。</p></article></section>
+    <section id="page-account" class="page" hidden>
+      <div class="page-heading"><div><div class="eyebrow">YOUR PROGRESS, EVERYWHERE</div><h1>把积累，带在身边。</h1><p>用自己的坚果云账号保存记录，换一台设备，也能接着向前。</p></div><span class="pill">国内直连 · 可用免费版</span></div>
+      <article class="settings-card account-card"><div class="card-top"><h2>☁ 坚果云账号同步</h2><span class="pill">离线也能专注</span></div><p id="sync-description" class="muted">专注记录、任务、念头和偏好先保存在本机，再自动同步到你的坚果云。无需购买服务器。</p>
+        <div id="sync-state" class="sync-state" role="status">尚未连接 · 继续本地保存</div>
+        <form id="sync-connect-form"><label for="sync-username">坚果云账号（邮箱）<input id="sync-username" type="email" autocomplete="username" required maxlength="200" placeholder="你的坚果云登录邮箱"></label><label for="sync-password">应用密码<input id="sync-password" type="password" autocomplete="off" required maxlength="500" placeholder="在坚果云“第三方应用管理”中生成"></label><p class="micro-copy">这里填写专门生成的应用密码。授权凭证由 Windows 加密保存在本机，备份文件不包含密码。</p><button class="primary">连接账号并同步 →</button></form>
+        <div id="sync-connected" hidden><div class="connected-account"><span class="account-avatar">☁</span><div><strong id="sync-account"></strong><p class="muted">记录保存于坚果云 / YiyuFocus</p></div></div><div class="backup-actions"><button id="sync-now" class="primary">立即同步</button><button id="sync-disconnect" class="secondary">断开这台设备</button></div></div>
+      </article>
+      <article class="settings-card"><h2>只需要设置一次</h2><ol class="setup-steps"><li><strong>注册坚果云免费账号</strong><span>打开 www.jianguoyun.com，注册并登录，无需开通会员。</span></li><li><strong>生成专用应用密码</strong><span>账户信息 → 安全选项 → 第三方应用管理 → 添加应用密码，名称填“一隅 Focus”。</span></li><li><strong>回到这里，连接账号</strong><span>填邮箱和刚生成的应用密码。第一次会合并本机与云端的记录。</span></li></ol><p class="micro-copy">免费版当前每月上传 1 GB、下载 3 GB（以坚果云规则为准）。只在记录变化后上传，计时每秒变化不会上传。多个设备的记录按标识合并；同一条内容的修改使用较新的版本，删除也会同步。</p><p class="micro-copy">专注计时只在当前设备进行。关闭软件后不后台同步，尚未上传的内容会在下次打开时重试。</p><button class="text-button" data-page="settings">导出一份本地备份 ↗</button></article>
+    </section>
+  </main>
+  <dialog id="thought-dialog" aria-labelledby="thought-title"><form id="distraction-form"><span class="dialog-symbol" data-icon="leaf"></span><h2 id="thought-title">发现分心，就是回来的开始。</h2><p>先把念头放下，不用现在解决。计时继续进行。</p><input id="distraction-input" maxlength="1000" placeholder="例如：一会儿查一下周末的车票" aria-label="分心念头"><div class="dialog-actions"><button type="button" data-close="thought-dialog" class="secondary">直接回到专注</button><button class="primary">记下来，继续专注</button></div></form></dialog>
+  <dialog id="review-dialog" aria-labelledby="review-title"><form id="review-form"><span class="dialog-symbol">✦</span><h2 id="review-title">这一段，认真度过了。</h2><p id="review-description"></p><label>用一句话，留下刚刚的收获<textarea id="review-note" maxlength="2000" placeholder="我理解了什么？下一步从哪里继续？"></textarea></label><p class="micro-copy">专注时间已经保存，收获可以留空。</p><div class="dialog-actions"><button type="button" id="review-skip" class="secondary">回到空间</button><button class="primary">保存收获，休息一下 →</button></div></form></dialog>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title"></h2><p id="confirm-body"></p><div class="dialog-actions"><button id="confirm-no" class="secondary">取消</button><button id="confirm-yes" class="primary">确认</button></div></dialog>
+  <div id="toast" role="status" hidden></div><div id="save-error" role="alert" hidden></div>
+  <script type="module" src="app.mjs"></script>
+</body></html>
