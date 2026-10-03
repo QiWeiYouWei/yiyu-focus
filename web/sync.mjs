@@ -1,12 +1,12 @@
 import {defaultState,validateState} from './core.mjs';
-const groups=['profile','tasks','sessions','thoughts'];
+const groups=['profile','tasks','sessions','thoughts','courseHabits'];
 const keyOf=e=>`${e.group}:${e.id}`;
 const compare=(a,b)=>a.time-b.time || a.device.localeCompare(b.device);
 const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-export function payload(state){return {version:1,profile:structuredClone(state.profile),tasks:structuredClone(state.tasks),sessions:structuredClone(state.sessions),thoughts:structuredClone(state.thoughts),active:null};}
+export function payload(state){return {version:1,profile:structuredClone(state.profile),tasks:structuredClone(state.tasks),sessions:structuredClone(state.sessions),thoughts:structuredClone(state.thoughts),courseHabits:structuredClone(state.courseHabits||[]),active:null};}
 function records(state){return [
   ...Object.entries(state.profile).map(([id,value])=>({group:'profile',id,value})),
-  ...['tasks','sessions','thoughts'].flatMap(group=>state[group].map(value=>({group,id:value.id,value})))
+  ...['tasks','sessions','thoughts','courseHabits'].flatMap(group=>(state[group]||[]).map(value=>({group,id:value.id,value})))
 ];}
 export function validatePacket(packet){
   if(!packet||packet.version!==1||!Array.isArray(packet.entries)||packet.entries.length>200000)throw Error('云端记录格式不兼容');
@@ -36,7 +36,7 @@ export class SyncTracker {
   merge(packets){packets.forEach(validatePacket);let changed=false;for(const packet of packets){for(const e of packet.entries){this.clock=Math.max(this.clock,e.clock.time);const old=this.entries.get(keyOf(e));if(!old||compare(e.clock,old.clock)>0){this.entries.set(keyOf(e),structuredClone(e));changed=true;}}}return changed;}
   packet(){return {version:1,entries:[...this.entries.values()].sort((a,b)=>keyOf(a).localeCompare(keyOf(b)))};}
   apply(local){
-    const result={...local,profile:{...local.profile},tasks:[],sessions:[],thoughts:[]};
+    const result={...local,profile:{...local.profile},tasks:[],sessions:[],thoughts:[],courseHabits:[]};
     for(const e of this.entries.values()){if(e.value===null)continue;if(e.group==='profile')result.profile[e.id]=e.value;else result[e.group].push(structuredClone(e.value));}
     result.sessions.sort((a,b)=>a.ended-b.ended||a.id.localeCompare(b.id));result.thoughts.sort((a,b)=>a.created-b.created||a.id.localeCompare(b.id));
     return validateState(result);

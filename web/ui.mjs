@@ -23,16 +23,19 @@ const paths={
 export function icon(name){return `<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.leaf}</svg>`;}
 export function setButton(el,label,name){
   if(el.dataset.label===label&&el.dataset.iconName===name)return;
-  el.dataset.label=label;el.dataset.iconName=name;el.innerHTML=icon(name);
+  el.setAttribute("aria-label",label);el.dataset.label=label;el.dataset.iconName=name;el.innerHTML=icon(name);
   const span=document.createElement('span');span.className='button-label';span.textContent=label;el.append(span);
 }
 export function setText(el,value){const text=String(value);if(el.textContent!==text)el.textContent=text;}
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let motionWanted=true;try{motionWanted=localStorage.getItem('yiyu-motion')!=='off';}catch{}
 export const motionEnabled=()=>motionWanted&&!reduced.matches;
-export function entrance(el){if(!motionEnabled()||!el)return;el.getAnimations().forEach(a=>a.cancel());el.animate([{opacity:0,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}],{duration:260,easing:'cubic-bezier(.2,.7,.2,1)'});}
-export function feedback(el){if(!motionEnabled()||!el)return;el.animate([{backgroundColor:'#e3eed9',transform:'translateY(4px)',opacity:.5},{backgroundColor:'transparent',transform:'translateY(0)',opacity:1}],{duration:380,easing:'ease-out'});}
+export function entrance(el){if(!motionEnabled()||!el||el.classList.contains('page')||document.documentElement.dataset.input==='keyboard')return;el.getAnimations().forEach(a=>a.cancel());el.animate([{opacity:0,transform:'translateY(4px)'},{opacity:1,transform:'translateY(0)'}],{duration:180,easing:'cubic-bezier(.23,1,.32,1)'});}
+export function feedback(el){if(!motionEnabled()||!el||document.documentElement.dataset.input==='keyboard')return;el.getAnimations().forEach(a=>a.cancel());el.animate([{transform:'translateY(3px)',opacity:.65},{transform:'translateY(0)',opacity:1}],{duration:180,easing:'cubic-bezier(.23,1,.32,1)'});}
 export function initializeUI(){
+  document.documentElement.dataset.input="pointer";
+  document.addEventListener("pointerdown",()=>{document.documentElement.dataset.input="pointer";},{capture:true,passive:true});
+  document.addEventListener("keydown",()=>{document.documentElement.dataset.input="keyboard";},true);
   document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
   const toggle=document.querySelector('#motion-toggle');
   function update(){

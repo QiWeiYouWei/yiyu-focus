@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification, dialog, powerMonitor, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, dialog, powerMonitor, safeStorage, globalShortcut, screen, shell } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 let win, writeQueue = Promise.resolve();
@@ -24,21 +24,17 @@ else {
     const { validateState } = await import('../web/core.mjs');
     const { validatePacket } = await import('../web/sync.mjs');
     await require('./sync-service.cjs').installSync({ipcMain,safeStorage,userData:app.getPath('userData'),validatePacket});
-    const dataPath = path.join(app.getPath('userData'),'focus-data.json');
-    ipcMain.handle('data:load', async()=>{
-      try { return validateState(JSON.parse(await fs.readFile(dataPath,'utf8'))); }
-      catch(e) { if(e.code==='ENOENT') return null; throw Error('本地数据读取失败。原文件已保留，请先备份后再处理。'); }
-    });
-    ipcMain.handle('data:save', (_e,data)=>{
-      validateState(data);
-      const json = JSON.stringify(data);
-      const next = writeQueue.catch(()=>{}).then(async()=>{
-        await fs.mkdir(path.dirname(dataPath),{recursive:true});
-        await fs.writeFile(dataPath+'.tmp',json,'utf8');
-        await fs.rename(dataPath+'.tmp',dataPath);
-      }); writeQueue=next; return next;
-    });
-    ipcMain.handle('window:pin',(_e,pin)=>{win.setAlwaysOnTop(!!pin);return win.isAlwaysOnTop();});
+    const store=new (require('./data-store.cjs').DataStore)(app.getPath('userData'),validateState);
+    const onlyMain=e=>{if(e.sender!==win?.webContents)throw Error('窗口无权访问');};
+    ipcMain.handle('data:load',e=>{onlyMain(e);return store.load();});
+    ipcMain.handle('data:save',(e,data)=>{onlyMain(e);return store.save(data);});
+    ipcMain.handle('data:restore',(e,data)=>{onlyMain(e);return store.restore(data);});
+    ipcMain.handle('backup:list',e=>{onlyMain(e);return store.list();});
+    ipcMain.handle('backup:read',(e,id)=>{onlyMain(e);return store.readBackup(id);});
+    ipcMain.handle('backup:now',(e,data)=>{onlyMain(e);return store.backupNow(data);});
+    ipcMain.handle('material:choose',async e=>{onlyMain(e);const result=await dialog.showOpenDialog(win,{properties:['openFile'],filters:[{name:'学习资料',extensions:['pdf','txt','md','docx','pptx','xlsx','png','jpg','mp4','html']}]});return result.canceled?'':result.filePaths[0];});
+    ipcMain.handle('material:open',async(e,location)=>{onlyMain(e);if(typeof location!=='string'||location.length>2000)throw Error('资料位置无效');if(/^https?:\/\//i.test(location)){const url=new URL(location);await shell.openExternal(url.href);return;}if(!path.isAbsolute(location)||!['.pdf','.txt','.md','.docx','.pptx','.xlsx','.png','.jpg','.mp4','.html'].includes(path.extname(location).toLowerCase()))throw Error('请选择支持的学习资料文件或网页地址');if(!(await fs.stat(location)).isFile())throw Error('资料文件不存在');const error=await shell.openPath(location);if(error)throw Error('无法打开资料：'+error);});
+    ipcMain.handle('window:pin',(e,pin)=>{onlyMain(e);win.show();win.setAlwaysOnTop(!!pin);return win.isAlwaysOnTop();});
     ipcMain.handle('notify',(_e,text)=>{if(Notification.isSupported()) new Notification({title:'一隅 Focus',body:String(text).slice(0,200)}).show();});
     ipcMain.handle('backup:export',async(_e,data)=>{
       validateState(data);
@@ -46,19 +42,22 @@ else {
       if(result.canceled) return false;
       await fs.writeFile(result.filePath,JSON.stringify(data,null,2));return true;
     });
-    win = new BrowserWindow({width:1280,height:960,minWidth:800,minHeight:650,icon:path.join(__dirname,'../web/icon.png'),backgroundColor:'#f8f9f5',autoHideMenuBar:true,title:'一隅 Focus',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
+    win = new BrowserWindow({width:1280,height:960,minWidth:800,minHeight:650,icon:path.join(__dirname,'../web/icon.png'),backgroundColor:'#f5f5f7',autoHideMenuBar:true,title:'一隅 Focus',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
     win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
     win.webContents.on('will-navigate',e=>e.preventDefault());
     win.webContents.session.setPermissionRequestHandler((_w,_p,cb)=>cb(false));
+    const floating=await require('./floating.cjs').installFloating({app,BrowserWindow,ipcMain,globalShortcut,screen,win,userData:app.getPath('userData')});
     await win.loadFile(path.join(__dirname,'../web/index.html'));
+    win.on('closed',()=>floating.stop());
     powerMonitor.on('suspend',()=>win?.webContents.send('system:pause'));
     powerMonitor.on('lock-screen',()=>win?.webContents.send('system:pause'));
     let closing=false;
     win.on('close',e=>{
       if(closing) return;
       e.preventDefault();
-      win.webContents.executeJavaScript('window.prepareToClose ? window.prepareToClose() : Promise.resolve()').then(async()=>{await writeQueue;closing=true;win.close();}).catch(()=>dialog.showMessageBox(win,{type:'error',message:'数据尚未保存，请稍后重试关闭。'}));
+      win.webContents.executeJavaScript('window.prepareToClose ? window.prepareToClose() : Promise.resolve()').then(async()=>{await store.queue;if(!store.failed){const latest=await store.load();if(latest)await store.backupNow(latest,'退出时备份');}closing=true;win.close();}).catch(()=>dialog.showMessageBox(win,{type:'error',message:'数据尚未保存，请稍后重试关闭。'}));
     });
   }).catch(error=>{diagnostic('startup-error',{message:error.message});dialog.showErrorBox('一隅 Focus 启动失败',error.message);app.quit();});
+  app.on('will-quit',()=>globalShortcut.unregisterAll());
   app.on('window-all-closed',()=>app.quit());
 }

@@ -1,0 +1,1 @@
+const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('mini',{init:()=>ipcRenderer.invoke('mini:init'),action:(type,text)=>ipcRenderer.invoke('mini:action',{type,text}),onState:callback=>ipcRenderer.on('mini:state',(_e,state)=>callback(state))});

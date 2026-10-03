@@ -2,7 +2,7 @@ export const dayKey = (time = Date.now()) => {
   const d = new Date(time);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
-export const defaultState = () => ({ version: 1, profile: { name: '学习中的你', motto: '慢慢来，每一次回来都算数。', goal: 60, duration: 15, breakMinutes: 5, sound: true }, tasks: [], sessions: [], thoughts: [], active: null });
+export const defaultState = () => ({ version: 1, profile: { name: '学习中的你', motto: '慢慢来，每一次回来都算数。', goal: 60, duration: 15, breakMinutes: 5, sound: true }, tasks: [], sessions: [], thoughts: [], active: null, draft: {title: '', course: ''}, courseHabits: [], trash: [] });
 export function elapsed(active, now = Date.now()) {
   if (!active) return 0;
   return Math.min(active.duration * 60000, Math.max(0, active.elapsed + (active.running ? Math.max(0, now-active.anchor) : 0)));
@@ -33,14 +33,19 @@ export function validateState(s) {
   const finite = (v,min,max) => Number.isFinite(v) && v >= min && v <= max;
   const str = (v,max=2000) => typeof v === 'string' && v.length <= max;
   if (!s || s.version !== 1 || !s.profile || !['tasks','sessions','thoughts'].every(k=>Array.isArray(s[k]) && s[k].length <= 100000)) throw Error('不是有效的一隅备份文件');
+  const optional=(value,max)=>value===undefined||str(value,max);
+  const extra=r=>optional(r.course,40)&&optional(r.nextStep,200)&&optional(r.question,1000)&&optional(r.position,200)&&(r.questionResolved===undefined||typeof r.questionResolved==='boolean');
+  if(s.draft!==undefined&&(!s.draft||!str(s.draft.title,200)||!str(s.draft.course,40)||!optional(s.draft.sessionId,100)||(s.draft.edited!==undefined&&typeof s.draft.edited!=='boolean')))throw Error('下一步目标格式有误');
   const p=s.profile;
   if (!str(p.name,40) || !str(p.motto,120) || !finite(p.goal,5,720) || !finite(p.duration,1,120) || !finite(p.breakMinutes,1,30) || typeof p.sound !== 'boolean') throw Error('个人设置格式有误');
-  if (!s.tasks.every(t=>str(t.id,100)&&str(t.title,200)&&typeof t.done==='boolean')) throw Error('任务格式有误');
-  if (!s.thoughts.every(t=>str(t.id,100)&&str(t.text,1000)&&typeof t.done==='boolean'&&finite(t.created,0,1e14))) throw Error('分心记录格式有误');
-  if (!s.sessions.every(t=>str(t.id,100)&&str(t.title,200)&&str(t.note,2000)&&finite(t.seconds,0,7200)&&finite(t.ended,0,1e14)&&typeof t.completed==='boolean'&&/^\d{4}-\d{2}-\d{2}$/.test(t.day)&&dayKey(t.ended)===t.day)) throw Error('专注记录格式有误');
+  if (!s.tasks.every(t=>str(t.id,100)&&str(t.title,200)&&extra(t)&&(t.plannedAt===undefined||finite(t.plannedAt,0,1e14))&&typeof t.done==='boolean')) throw Error('任务格式有误');
+  if (!s.thoughts.every(t=>str(t.id,100)&&str(t.text,1000)&&extra(t)&&optional(t.sessionId,100)&&(t.source===undefined||['focus','inbox'].includes(t.source))&&typeof t.done==='boolean'&&finite(t.created,0,1e14))) throw Error('分心记录格式有误');
+  if (!s.sessions.every(t=>str(t.id,100)&&str(t.title,200)&&str(t.note,2000)&&extra(t)&&finite(t.seconds,0,7200)&&finite(t.ended,0,1e14)&&typeof t.completed==='boolean'&&/^\d{4}-\d{2}-\d{2}$/.test(t.day)&&dayKey(t.ended)===t.day)) throw Error('专注记录格式有误');
   if (s.active !== null) {
     const a=s.active;
-    if (!a || !str(a.id,100)|| !str(a.title,200)||!['focus','break'].includes(a.kind)||!finite(a.duration,1,120)||!finite(a.elapsed,0,a.duration*60000)||!finite(a.anchor,0,1e14)||typeof a.running!=='boolean') throw Error('计时状态格式有误');
+    if (!a || !str(a.id,100)|| !str(a.title,200)||!extra(a)||!['focus','break'].includes(a.kind)||!finite(a.duration,1,120)||!finite(a.elapsed,0,a.duration*60000)||!finite(a.anchor,0,1e14)||typeof a.running!=='boolean'||(a.goalDuration!==undefined&&(!finite(a.goalDuration,1,a.duration)))||['waiting','paragraph'].some(key=>a[key]!==undefined&&typeof a[key]!=='boolean')) throw Error('计时状态格式有误');
   }
+  if(s.courseHabits!==undefined&&(!Array.isArray(s.courseHabits)||s.courseHabits.length>2000||!s.courseHabits.every(h=>h&&str(h.id,100)&&str(h.course,40)&&h.course.trim()&&finite(h.minutes,1,120)&&str(h.material,2000)&&str(h.position,200)&&finite(h.updated,0,1e14))))throw Error('课程学习习惯格式有误');
+  if(s.trash!==undefined){if(!Array.isArray(s.trash)||s.trash.length>1000)throw Error('回收站格式有误');for(const item of s.trash){if(!item||!str(item.id,100)||!['tasks','sessions','thoughts'].includes(item.kind)||!finite(item.deleted,0,1e14))throw Error('回收站格式有误');validateState({...defaultState(),[item.kind]:[item.record]});}}
   return s;
 }

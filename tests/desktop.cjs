@@ -12,7 +12,7 @@ const fs=require('node:fs/promises');
     assert.equal(await app.evaluate(({app})=>app.getPath('userData')),dataDir);
     assert.equal(await app.evaluate(({app})=>app.isHardwareAccelerationEnabled()),false);
     await page.locator('#intention').fill('桌面保存与重启验证');await page.locator('#start').click();await page.waitForTimeout(1600);
-    await page.locator('#pin').click();assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isAlwaysOnTop()),true);
+    await page.locator('#pin').click();await page.waitForFunction(()=>document.querySelector('#pin').getAttribute('aria-pressed')==='true');assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isAlwaysOnTop()),true);
     await page.locator('#task-input').fill('持久化任务');await page.locator('#task-form .add-button').click();
     await app.evaluate(({powerMonitor})=>powerMonitor.emit('lock-screen'));
     await page.waitForFunction(()=>document.querySelector('#start').textContent.includes('继续'));

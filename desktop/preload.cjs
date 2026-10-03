@@ -1,5 +1,17 @@
 const {contextBridge,ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('desktop', {
+  capture:()=>ipcRenderer.invoke('desktop:capture'),
+  toggleMini:()=>ipcRenderer.invoke('desktop:toggle-mini'),
+  preferences:()=>ipcRenderer.invoke('desktop:preferences'),
+  savePreferences:value=>ipcRenderer.invoke('desktop:preferences-save',value),
+  publishMini:state=>ipcRenderer.send('mini:state',state),
+  onCommand:callback=>ipcRenderer.on('desktop:command',async(_e,command)=>{try{const value=await callback(command);ipcRenderer.send('desktop:result',{id:command.id,ok:true,value});}catch(e){ipcRenderer.send('desktop:result',{id:command.id,ok:false,error:e.message});}}),
+  chooseMaterial:()=>ipcRenderer.invoke('material:choose'),
+  openMaterial:location=>ipcRenderer.invoke('material:open',location),
+  backups:()=>ipcRenderer.invoke('backup:list'),
+  readBackup:id=>ipcRenderer.invoke('backup:read',id),
+  backupNow:data=>ipcRenderer.invoke('backup:now',data),
+  restore:data=>ipcRenderer.invoke('data:restore',data),
   load:()=>ipcRenderer.invoke('data:load'),
   save:data=>ipcRenderer.invoke('data:save',data),
   pin:pin=>ipcRenderer.invoke('window:pin',pin),

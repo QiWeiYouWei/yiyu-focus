@@ -1,0 +1,2 @@
+const fs=require('node:fs/promises'),path=require('node:path');
+(async()=>{const root=path.resolve(__dirname,'..'),target=path.join(root,'android/app/src/main/assets/web');await fs.mkdir(target,{recursive:true});for(const name of await fs.readdir(path.join(root,'web'))){if(/\.(html|css|mjs|svg|png)$/.test(name)&&!name.startsWith('mini.'))await fs.copyFile(path.join(root,'web',name),path.join(target,name));}console.log('Android assets copied; shared SVG icons unchanged.');})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,6 +1,6 @@
 {
   "name": "yiyu-focus",
-  "version": "0.3.0",
+  "version": "0.7.0",
   "description": "一隅 Focus — 留一点时间给真正重要的事",
   "main": "desktop/main.cjs",
   "author": "Focus",
@@ -8,12 +8,20 @@
   "scripts": {
     "start": "electron .",
     "dev": "node scripts/serve.cjs",
-    "test": "node --test tests/core.test.mjs tests/sync.test.mjs tests/webdav.test.cjs",
+    "test": "node --test tests/core.test.mjs tests/learning.test.mjs tests/workflow.test.mjs tests/data-store.test.cjs tests/sync.test.mjs tests/webdav.test.cjs",
     "test:sync-ui": "node tests/sync-ui.cjs",
     "test:ui": "node tests/ui.cjs",
     "test:desktop": "node tests/desktop.cjs",
     "pack": "electron-builder --win --dir",
-    "dist": "electron-builder --win portable"
+    "dist": "electron-builder --win portable",
+    "test:learning-ui": "node tests/learning-ui.cjs",
+    "test:workflow-ui": "node tests/workflow-ui.cjs",
+    "test:floating": "node tests/floating.cjs",
+    "android:prepare": "node scripts/android-prepare.cjs",
+    "android:build": "node scripts/android-build.cjs",
+    "test:android": "node tests/android-ui.cjs",
+    "test:android-files": "node tests/android-files.cjs",
+    "test:design": "node tests/design-ui.cjs"
   },
   "build": {
     "appId": "local.yiyu.focus",
@@ -33,7 +41,10 @@
     },
     "portable": {
       "artifactName": "Yiyu-Focus-${version}-Windows.exe"
-    }
+    },
+    "asarUnpack": [
+      "desktop/window-focus.ps1"
+    ]
   },
   "devDependencies": {
     "electron": "^44.4.5",

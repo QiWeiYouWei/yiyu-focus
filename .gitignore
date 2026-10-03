@@ -3,3 +3,11 @@ release/
 test-results/
 *.log
 .npm-cache/
+
+.android-tools/
+.android-signing/
+android/.gradle/
+android/**/build/
+android/local.properties
+android/signing.properties
+android/app/src/main/assets/
