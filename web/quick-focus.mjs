@@ -1,5 +1,5 @@
 import {orderedPresets} from './journey.mjs';
-import {eventIcons,validPreset,validQuantity,quantityLabel} from './planning.mjs';
+import {focusIcons,validPreset,validQuantity,quantityLabel} from './planning.mjs';
 
 export function setupQuickFocus({getState,getPage,isBlocked,save,renderAll,startPreset,toast,confirmAction,recycle,escape,icon,onPresetsChanged}) {
   const $=selector=>document.querySelector(selector);
@@ -26,7 +26,7 @@ export function setupQuickFocus({getState,getPage,isBlocked,save,renderAll,start
     updateBusy();
   }
   function renderIcons() {
-    $('#preset-icons').innerHTML=eventIcons.map(([value,label])=>'<button type="button" data-preset-icon="'+escape(value)+'" aria-label="'+label+'图标" aria-pressed="'+(value===selectedIcon)+'">'+value+'</button>').join('');
+    $('#preset-icons').innerHTML=focusIcons.map(([value,label])=>'<button type="button" data-preset-icon="'+escape(value)+'" title="'+label+'" aria-label="'+label+'图标" aria-pressed="'+(value===selectedIcon)+'">'+value+'</button>').join('');
   }
   function open(preset=null) {
     editing=preset?.id||null;selectedIcon=preset?.icon||'📚';

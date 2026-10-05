@@ -2,7 +2,7 @@
 
 ## 安装与同步
 
-1. 将 release/Yiyu-Focus-0.11.0-Android.apk 传到手机安装，按系统提示允许此次安装。支持 Android 8.0 及以上。
+1. 将 release/Yiyu-Focus-0.11.1-Android.apk 传到手机安装，按系统提示允许此次安装。支持 Android 8.0 及以上。
 2. 先离线使用也可以。同步时点右上角“账号同步”，填写 Windows 端相同的坚果云邮箱和应用密码，再连接。不要填写坚果云网页登录密码。
 3. Windows 端建议同时升级到 0.11.0，以同步日历与学习量新字段。常用专注事件、日历安排、任务、完成记录、课程、收获、疑问及其解决状态、下一步、暂存念头与个人偏好共享；正在进行的计时、目标草稿、回收站和备份只在当前设备保存。
 4. “课程学习习惯”中的网页可直接打开。Windows 文件路径在手机无效，请重新选择手机文件。手机通过系统文件选择器授权读取资料，不请求访问全部文件。
@@ -45,7 +45,7 @@ npm ci
 npm run android:build
 ~~~
 
-工具也会识别本项目 .android-tools/sdk。构建前自动复制 web/ 到 app/src/main/assets/web，使用 Gradle 8.13 和 Android Gradle Plugin 8.13.2。Windows 和安卓界面版本统一为 0.11.0。最终 APK 位于 release/。
+工具也会识别本项目 .android-tools/sdk。构建前自动复制 web/ 到 app/src/main/assets/web，使用 Gradle 8.13 和 Android Gradle Plugin 8.13.2。Windows 和安卓界面版本统一为 0.11.1。最终 APK 位于 release/。
 
 首次构建在 .android-signing/yiyu-release.jks 创建本地发布签名，密码保存在 android/signing.properties；两者已忽略，不应上传仓库。请安全备份这两个文件，后续覆盖安装必须保留同一签名；丢失密钥就无法正常升级现有安装。备份签名文件不等于导出用户学习数据。
 

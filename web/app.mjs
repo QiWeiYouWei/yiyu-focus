@@ -121,7 +121,7 @@ function renderGrowth(){
   $('#heatmap-year').innerHTML=years.map(y=>`<option value="${y}" ${y===previousYear?'selected':''}>${y} 年</option>`).join('');
   const year=Number($('#heatmap-year').value);let d=new Date(year,0,1,12),cells='';
   for(let i=0;i<(d.getDay()+6)%7;i++)cells+='<span class="heat-cell blank"></span>';
-  while(d.getFullYear()===year){const key=dayKey(d),seconds=s.days[key]||0,level=seconds===0?0:seconds<900?1:seconds<1800?2:seconds<3600?3:4;cells+=`<button class="heat-cell level-${level}" data-day="${key}" title="${key} · ${pretty(seconds)}" aria-label="${key}，专注 ${pretty(seconds)}"></button>`;d.setDate(d.getDate()+1);}
+  while(d.getFullYear()===year){const key=dayKey(d),seconds=s.days[key]||0,level=seconds===0?0:Math.min(5,Math.floor(seconds/3600)+1);cells+=`<button class="heat-cell level-${level}" data-day="${key}" title="${key} · ${pretty(seconds)}" aria-label="${key}，专注 ${pretty(seconds)}"></button>`;d.setDate(d.getDate()+1);}
   $('#heatmap').innerHTML=cells;$('#heatmap-months').innerHTML=Array.from({length:12},(_,i)=>`<span>${i+1}月</span>`).join('');
   $('#active-days').textContent=Object.entries(s.days).filter(([k,v])=>k.startsWith(year+'')&&v>=60).length;
   const week=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return {day:d.toLocaleDateString('zh-CN',{weekday:'short'}),value:s.days[dayKey(d)]||0};});const max=Math.max(60,...week.map(d=>d.value));

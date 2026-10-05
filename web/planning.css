@@ -9,3 +9,6 @@
 @media(max-width:600px){.quick-focus-card{padding:20px}.calendar-toolbar{gap:10px}.calendar-toolbar #calendar-today{padding:0 12px}.timer-tools{gap:10px}.timer-tools button{min-height:30px}#page-quick .page-heading{flex-wrap:wrap;gap:14px}.preset-list{gap:14px}#preset-add{min-height:44px}}
 
 @media(max-width:600px) and (max-height:700px){.timer-ring{width:120px;height:120px}}
+
+/* Keep a larger preset palette within reach on short phone screens. */
+#preset-icons{grid-template-columns:repeat(auto-fill,minmax(44px,1fr));max-height:240px;overflow-y:auto;overscroll-behavior:contain;padding:2px}

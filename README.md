@@ -6,15 +6,17 @@
 
 普通用户请到 [最新版本下载页](https://github.com/QiWeiYouWei/yiyu-focus/releases/latest)。在 Assets（资源）中下载 Windows 的 `.exe` 或安卓的 `.apk`；“Code → Download ZIP”是源码。
 
-[Windows 0.11.0 下载](https://github.com/QiWeiYouWei/yiyu-focus/releases/download/v0.11.0/Yiyu-Focus-0.11.0-Windows.exe) · [安卓 0.11.0 下载](https://github.com/QiWeiYouWei/yiyu-focus/releases/download/v0.11.0/Yiyu-Focus-0.11.0-Android.apk)
+[Windows 0.11.1 下载](https://github.com/QiWeiYouWei/yiyu-focus/releases/download/v0.11.1/Yiyu-Focus-0.11.1-Windows.exe) · [安卓 0.11.1 下载](https://github.com/QiWeiYouWei/yiyu-focus/releases/download/v0.11.1/Yiyu-Focus-0.11.1-Android.apk)
 
 ## 直接使用
 
-打开 `release/Yiyu-Focus-0.11.0-Windows.exe`。这是便携启动程序，不需要安装 Node.js。数据仍存放在 Windows 用户目录，移动 EXE 不会带走记录。也可以运行 `release/win-unpacked/Yiyu Focus.exe`，但需要保留同目录全部文件。新版沿用原数据目录，升级保留旧版记录与账号连接。
+打开 `release/Yiyu-Focus-0.11.1-Windows.exe`。这是便携启动程序，不需要安装 Node.js。数据仍存放在 Windows 用户目录，移动 EXE 不会带走记录。也可以运行 `release/win-unpacked/Yiyu Focus.exe`，但需要保留同目录全部文件。新版沿用原数据目录，升级保留旧版记录与账号连接。
 
-安卓安装包：`release/Yiyu-Focus-0.11.0-Android.apk`，支持 Android 8.0 及以上。在手机安装后，使用 Windows 端相同的坚果云邮箱和应用密码连接同步。详见 [安卓使用与开发说明](./android/README.md)。
+安卓安装包：`release/Yiyu-Focus-0.11.1-Android.apk`，支持 Android 8.0 及以上。在手机安装后，使用 Windows 端相同的坚果云邮箱和应用密码连接同步。详见 [安卓使用与开发说明](./android/README.md)。
 
 安卓沿用叶子图标、卡片与动效，包含专注/休息、分心暂存、课程学习习惯、热力图、学习回顾、未解决问题、回收站、自动备份与 JSON 导入导出。切到学习资料或锁屏后计时继续；到点柔和提醒，返回后选择续读或结束。首次使用可在偏好设置开启通知和准时提醒权限。
+
+0.11.1 调整热力图为按小时加深：未专注、不足 1 小时、1–不足 2 小时、2–不足 3 小时、3–不足 4 小时、4 小时及以上。快速专注图标从 12 个扩充为 36 个，手机图标面板可滚动选择；Windows 与安卓规则一致。
 
 0.11.0 在“我的成长”增加四张交互图：每日投入趋势、课程投入分布、学习量目标与实际、分心原因分布。统一选择近 7 / 30 / 90 天，沿用热力图上方的课程筛选；点课程条形图可筛选，点“全部课程”返回。趋势和学习量图支持点击、鼠标指向、触摸滑块、键盘方向键和“查看数据”表格。
 

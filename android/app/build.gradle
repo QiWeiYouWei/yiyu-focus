@@ -5,7 +5,7 @@ if (signingFile.exists()) signingFile.withInputStream { signingValues.load(it) }
 android {
  namespace 'local.yiyu.focus'
  compileSdk 36
- defaultConfig { applicationId 'local.yiyu.focus'; minSdk 26; targetSdk 36; versionCode 1100; versionName '0.11.0'; testInstrumentationRunner 'local.yiyu.focus.NativeChecks' }
+ defaultConfig { applicationId 'local.yiyu.focus'; minSdk 26; targetSdk 36; versionCode 1101; versionName '0.11.1'; testInstrumentationRunner 'local.yiyu.focus.NativeChecks' }
  buildFeatures { buildConfig true }
  compileOptions { coreLibraryDesugaringEnabled true; sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
  signingConfigs { release { if(signingFile.exists()) { storeFile file(signingValues.storeFile); storePassword signingValues.storePassword; keyAlias signingValues.keyAlias; keyPassword signingValues.keyPassword } } }
