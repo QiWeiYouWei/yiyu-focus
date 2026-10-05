@@ -42,6 +42,8 @@ jobs:
         run: npm run dist -- --publish never --config.electronDist=node_modules/electron/dist
       - name: Verify final Windows executable
         run: node tests/portable.cjs
+      - name: Verify release publication safeguards
+        run: node --test tests/release.test.cjs
       - name: Prepare and publish verified downloads
         run: node scripts/publish-release.cjs
         env:

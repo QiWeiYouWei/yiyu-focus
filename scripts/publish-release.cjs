@@ -17,10 +17,11 @@ console.log('Prepared '+version+' downloads; signed Android APK matches the orig
 if(process.argv.includes('--prepare'))process.exit(0);
 if(process.env.GITHUB_ACTIONS!=='true'||process.env.GITHUB_REPOSITORY!==repo||!process.env.GH_TOKEN)throw Error('Publishing requires the authorized repository workflow');
 const run=args=>cp.execFileSync('gh',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']});
-const lookup=()=>{const result=cp.spawnSync('gh',['api','repos/'+repo+'/releases/tags/'+tag],{cwd:root,encoding:'utf8',windowsHide:true});if(result.status===0)return JSON.parse(result.stdout);if(result.stderr.includes('HTTP 404'))return null;throw Error('Cannot inspect existing release: '+result.stderr);};
+const lookup=()=>{const pages=JSON.parse(run(['api','--paginate','--slurp','repos/'+repo+'/releases?per_page=100']));const matches=pages.flat().filter(r=>r.tag_name===tag);if(matches.length>1)throw Error('Multiple release drafts share this tag; refusing ambiguous publication');return matches[0]||null;};
 let release=lookup();
 if(release&&!release.draft)throw Error('This version is already published; keep published downloads immutable and bump the version for a new release');
 if(!release){run(['release','create',tag,'--repo',repo,'--target',process.env.GITHUB_SHA,'--title','一隅 Focus '+version,'--notes-file',notes,'--draft']);release=lookup();if(!release?.draft)throw Error('Draft release was not created');}
+run(['release','edit',tag,'--repo',repo,'--target',process.env.GITHUB_SHA,'--notes-file',notes,'--draft=true']);
 run(['release','upload',tag,...files,'--repo',repo,'--clobber']);
 release=lookup();
 for(const file of files){const asset=release.assets.find(a=>a.name===path.basename(file));if(!asset||asset.size!==fs.statSync(file).size)throw Error('Uploaded asset size mismatch: '+path.basename(file));if(asset.digest&&asset.digest!=='sha256:'+hash(file))throw Error('Uploaded asset checksum mismatch: '+path.basename(file));}
