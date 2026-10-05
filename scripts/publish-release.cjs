@@ -18,9 +18,11 @@ if(process.argv.includes('--prepare'))process.exit(0);
 if(process.env.GITHUB_ACTIONS!=='true'||process.env.GITHUB_REPOSITORY!==repo||!process.env.GH_TOKEN)throw Error('Publishing requires the authorized repository workflow');
 const run=args=>cp.execFileSync('gh',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']});
 const lookup=()=>{const pages=JSON.parse(run(['api','--paginate','--slurp','repos/'+repo+'/releases?per_page=100']));const matches=pages.flat().filter(r=>r.tag_name===tag);if(matches.length>1)throw Error('Multiple release drafts share this tag; refusing ambiguous publication');return matches[0]||null;};
+// Newly created drafts may take a few seconds to appear in GitHub's release list.
+function awaitDraft(){for(let attempt=0;attempt<6;attempt++){const draft=lookup();if(draft?.draft)return draft;if(draft)throw Error('Release was published concurrently; refusing to replace downloads');if(attempt<5)Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,1000*2**attempt);}throw Error('Draft release was not visible after retrying');}
 let release=lookup();
 if(release&&!release.draft)throw Error('This version is already published; keep published downloads immutable and bump the version for a new release');
-if(!release){run(['release','create',tag,'--repo',repo,'--target',process.env.GITHUB_SHA,'--title','一隅 Focus '+version,'--notes-file',notes,'--draft']);release=lookup();if(!release?.draft)throw Error('Draft release was not created');}
+if(!release){run(['release','create',tag,'--repo',repo,'--target',process.env.GITHUB_SHA,'--title','一隅 Focus '+version,'--notes-file',notes,'--draft']);release=awaitDraft();}
 run(['release','edit',tag,'--repo',repo,'--target',process.env.GITHUB_SHA,'--notes-file',notes,'--draft=true']);
 run(['release','upload',tag,...files,'--repo',repo,'--clobber']);
 release=lookup();
