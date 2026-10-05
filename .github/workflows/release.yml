@@ -1,0 +1,46 @@
+name: Publish desktop and Android release
+
+on:
+  push:
+    branches: [main]
+    paths: ['distribution/release.json']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'QiWeiYouWei/yiyu-focus' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify learning and sync data
+        run: npm test
+      - name: Verify growth charts
+        run: |
+          New-Item -ItemType Directory -Path test-results -Force | Out-Null
+          npm run test:growth
+      - name: Build Windows portable app
+        run: npm run dist -- --config.electronDist=node_modules/electron/dist
+      - name: Verify final Windows executable
+        run: node tests/portable.cjs
+      - name: Prepare and publish verified downloads
+        run: node scripts/publish-release.cjs
+        env:
+          GH_TOKEN: ${{ github.token }}
