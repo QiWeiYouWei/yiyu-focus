@@ -2,6 +2,12 @@
 
 一个温和的个人专注空间。Windows 与安卓共用专注逻辑、记录格式和界面图标，记录可通过自己的坚果云账号同步。
 
+## 下载安装
+
+普通用户请到 [最新版本下载页](https://github.com/QiWeiYouWei/yiyu-focus/releases/latest)。在 Assets（资源）中下载 Windows 的 `.exe` 或安卓的 `.apk`；“Code → Download ZIP”是源码。
+
+[Windows 0.11.0 下载](https://github.com/QiWeiYouWei/yiyu-focus/releases/download/v0.11.0/Yiyu-Focus-0.11.0-Windows.exe) · [安卓 0.11.0 下载](https://github.com/QiWeiYouWei/yiyu-focus/releases/download/v0.11.0/Yiyu-Focus-0.11.0-Android.apk)
+
 ## 直接使用
 
 打开 `release/Yiyu-Focus-0.11.0-Windows.exe`。这是便携启动程序，不需要安装 Node.js。数据仍存放在 Windows 用户目录，移动 EXE 不会带走记录。也可以运行 `release/win-unpacked/Yiyu Focus.exe`，但需要保留同目录全部文件。新版沿用原数据目录，升级保留旧版记录与账号连接。
