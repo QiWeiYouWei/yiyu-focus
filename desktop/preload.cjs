@@ -1,5 +1,8 @@
 const {contextBridge,ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('desktop', {
+  calendarSchedule:events=>ipcRenderer.invoke('calendar:schedule',events),
+  calendarSnooze:id=>ipcRenderer.invoke('calendar:snooze',id),
+  onReminder:callback=>ipcRenderer.on('calendar:reminder',(_e,id)=>callback(id)),
   capture:()=>ipcRenderer.invoke('desktop:capture'),
   toggleMini:()=>ipcRenderer.invoke('desktop:toggle-mini'),
   preferences:()=>ipcRenderer.invoke('desktop:preferences'),

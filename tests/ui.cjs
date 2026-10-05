@@ -18,7 +18,7 @@ const path=require('node:path');
     await page.locator('[data-minutes="5"]').click();await page.locator('#start').click();
     await page.waitForTimeout(1200);await page.locator('#start').click();const paused=await page.locator('#timer').innerText();await page.waitForTimeout(1200);assert.equal(await page.locator('#timer').innerText(),paused);
     await page.reload();assert.match(await page.locator('#start').innerText(),/继续/);
-    await page.locator('#start').click();await page.locator('#distracted').click();await page.locator('#distraction-input').fill('查一下车票');await page.locator('#distraction-form .primary').click();assert.equal(await page.locator('#inbox-count').innerText(),'1');
+    await page.locator('#start').click();await page.locator('#distracted').click();await page.locator('#distraction-input').fill('查一下车票');await page.locator('#distraction-form .primary').click();await page.locator('#return-continue').click();assert.equal(await page.locator('#inbox-count').innerText(),'1');
     await page.locator('#finish').click();await page.locator('#confirm-yes').click();await page.locator('#review-dialog').waitFor({state:'visible'});await page.locator('#review-note').fill('理解了反馈的作用');await page.locator('#review-form .primary').click();assert.match(await page.locator('#timer-mode').innerText(),/休息/);
     await page.locator('#finish').click();await page.locator('[data-page="history"]').first().click();assert.match(await page.locator('#history-list').innerText(),/反馈/);
     await page.locator('[data-page="inbox"]').first().click();await page.locator('[data-check-thought]').check();assert.equal(await page.locator('#inbox-count').innerText(),'0');

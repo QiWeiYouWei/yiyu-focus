@@ -3,7 +3,7 @@ const foreground=require('./window-focus.cjs');
 exports.installFloating=async({app,BrowserWindow,ipcMain,globalShortcut,screen,win,userData})=>{
  await foreground.start();
  let mini=null,snapshot={text:'15:00',title:'先在专注空间选择一个小目标',course:'',running:false,active:false,waiting:false},collapsed=false,capturing=false,returnHandle='0',wasVisible=false,stopping=false,opening=false;
- const pending=new Map(),settingsPath=path.join(userData,'desktop-preferences.json');let preferences={capture:'Control+Alt+Space',floating:'Control+Alt+F',showOnStart:false};
+ const pending=new Map(),settingsPath=path.join(userData,'desktop-preferences.json');let preferences={capture:'Control+Alt+Space',floating:'Control+Alt+F',quick:'Control+Alt+Q',showOnStart:false};
  try{preferences={...preferences,...JSON.parse(await fs.readFile(settingsPath,'utf8'))};}catch{}
  const secure=w=>{w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',e=>e.preventDefault());};
  const resize=height=>{mini.setMinimumSize(0,0);mini.setSize(340,height);mini.setMinimumSize(0,0);};
@@ -25,10 +25,10 @@ exports.installFloating=async({app,BrowserWindow,ipcMain,globalShortcut,screen,w
   if(type==='show-main'){win.show();win.focus();return;}
   if(!['toggle','finish','extend','paragraph'].includes(type))throw Error('未知操作');if(type==='finish'){win.show();win.focus();}return await request(type);
  });
- let registrations={};function register(){globalShortcut.unregisterAll();registrations={};for(const key of ['capture','floating']){const accelerator=preferences[key];if(accelerator==='off'){registrations[key]=false;continue;}try{registrations[key]=globalShortcut.register(accelerator,()=>{(key==='capture'?capture():toggle()).catch(()=>{});});}catch{registrations[key]=false;}}return {...preferences,registrations};}
- const allowed={capture:['Control+Alt+Space','Control+Shift+F8','off'],floating:['Control+Alt+F','Control+Shift+F9','off']};
+ let registrations={};function register(){globalShortcut.unregisterAll();registrations={};for(const key of ['capture','floating','quick']){const accelerator=preferences[key];if(accelerator==='off'){registrations[key]=false;continue;}try{registrations[key]=globalShortcut.register(accelerator,()=>{(key==='capture'?capture():key==='quick'?(win.restore(),win.show(),win.focus(),request('quick')):toggle()).catch(()=>{});});}catch{registrations[key]=false;}}return {...preferences,registrations};}
+ const allowed={quick:['Control+Alt+Q','Control+Shift+F10','off'],capture:['Control+Alt+Space','Control+Shift+F8','off'],floating:['Control+Alt+F','Control+Shift+F9','off']};
  ipcMain.handle('desktop:preferences',e=>{if(e.sender!==win.webContents)throw Error('窗口无权访问');return {...preferences,registrations};});
- ipcMain.handle('desktop:preferences-save',async(e,value)=>{if(e.sender!==win.webContents||!value||!allowed.capture.includes(value.capture)||!allowed.floating.includes(value.floating)||typeof value.showOnStart!=='boolean')throw Error('快捷键设置无效');preferences={capture:value.capture,floating:value.floating,showOnStart:value.showOnStart};const result=register();await fs.writeFile(settingsPath,JSON.stringify(preferences));return result;});
+ ipcMain.handle('desktop:preferences-save',async(e,value)=>{if(e.sender!==win.webContents||!value||!allowed.capture.includes(value.capture)||!allowed.floating.includes(value.floating)||(value.quick!==undefined&&!allowed.quick.includes(value.quick))||typeof value.showOnStart!=='boolean')throw Error('快捷键设置无效');preferences={capture:value.capture,floating:value.floating,quick:value.quick||preferences.quick,showOnStart:value.showOnStart};const result=register();await fs.writeFile(settingsPath,JSON.stringify(preferences));return result;});
  ipcMain.handle('desktop:capture',e=>{if(e.sender!==win.webContents)throw Error('窗口无权访问');return capture();});
  ipcMain.handle('desktop:toggle-mini',e=>{if(e.sender!==win.webContents)throw Error('窗口无权访问');return toggle();});
  register();if(preferences.showOnStart)await toggle();

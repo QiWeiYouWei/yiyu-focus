@@ -1,6 +1,6 @@
 {
   "name": "yiyu-focus",
-  "version": "0.7.0",
+  "version": "0.11.0",
   "description": "一隅 Focus — 留一点时间给真正重要的事",
   "main": "desktop/main.cjs",
   "author": "Focus",
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "node scripts/serve.cjs",
-    "test": "node --test tests/core.test.mjs tests/learning.test.mjs tests/workflow.test.mjs tests/data-store.test.cjs tests/sync.test.mjs tests/webdav.test.cjs",
+    "test": "node --test tests/core.test.mjs tests/learning.test.mjs tests/workflow.test.mjs tests/data-store.test.cjs tests/sync.test.mjs tests/webdav.test.cjs tests/planning.test.mjs tests/journey.test.mjs tests/growth.test.mjs",
     "test:sync-ui": "node tests/sync-ui.cjs",
     "test:ui": "node tests/ui.cjs",
     "test:desktop": "node tests/desktop.cjs",
@@ -21,7 +21,14 @@
     "android:build": "node scripts/android-build.cjs",
     "test:android": "node tests/android-ui.cjs",
     "test:android-files": "node tests/android-files.cjs",
-    "test:design": "node tests/design-ui.cjs"
+    "test:design": "node tests/design-ui.cjs",
+    "test:planning-ui": "node tests/planning-ui.cjs",
+    "test:android-planning": "node tests/android-planning.cjs",
+    "test:quick-focus": "node tests/quick-focus-ui.cjs",
+    "test:android-quick": "node tests/android-quick-focus.cjs",
+    "test:journey": "node tests/journey-ui.cjs",
+    "test:android-journey": "node tests/android-journey.cjs",
+    "test:growth": "node tests/growth-ui.cjs"
   },
   "build": {
     "appId": "local.yiyu.focus",

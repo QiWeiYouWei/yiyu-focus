@@ -48,7 +48,8 @@ else {
     win.webContents.session.setPermissionRequestHandler((_w,_p,cb)=>cb(false));
     const floating=await require('./floating.cjs').installFloating({app,BrowserWindow,ipcMain,globalShortcut,screen,win,userData:app.getPath('userData')});
     await win.loadFile(path.join(__dirname,'../web/index.html'));
-    win.on('closed',()=>floating.stop());
+    const calendar=await require('./calendar-reminders.cjs').installCalendar({ipcMain,win,userData:app.getPath('userData'),Notification,load:()=>store.load()});
+    win.on('closed',()=>{floating.stop();calendar.stop();});
     powerMonitor.on('suspend',()=>win?.webContents.send('system:pause'));
     powerMonitor.on('lock-screen',()=>win?.webContents.send('system:pause'));
     let closing=false;

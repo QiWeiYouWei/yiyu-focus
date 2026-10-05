@@ -19,6 +19,6 @@ export function recycle(state,kind,id,now=Date.now()){
  state.trash=[...(state.trash||[]).filter(t=>now-t.deleted<30*86400000),{id:crypto.randomUUID(),kind,record:structuredClone(record),deleted:now}].slice(-1000);state[kind]=state[kind].filter(r=>r.id!==id);return true;
 }
 export function recover(state,id){
- const item=(state.trash||[]).find(t=>t.id===id);if(!item||Date.now()-item.deleted>=30*86400000)throw Error('这条内容已不在回收站');if(state[item.kind].some(r=>r.id===item.record.id))throw Error('这条记录已经存在，不会覆盖');
+ const item=(state.trash||[]).find(t=>t.id===id);if(!item||Date.now()-item.deleted>=30*86400000)throw Error('这条内容已不在回收站');state[item.kind]??=[];if(state[item.kind].some(r=>r.id===item.record.id))throw Error('这条记录已经存在，不会覆盖');
  state[item.kind].push(structuredClone(item.record));state.trash=state.trash.filter(t=>t.id!==id);if(item.kind==='sessions')state.sessions.sort((a,b)=>a.ended-b.ended);return item;
 }

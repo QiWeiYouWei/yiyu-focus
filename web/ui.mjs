@@ -1,5 +1,8 @@
 // A small, local icon and motion layer. No network assets or animation runtime.
 const paths={
+  'chevron-left':'<path d="m14 6-6 6 6 6"/>',
+  'chevron-right':'<path d="m10 6 6 6-6 6"/>',
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 5h2m4 0h2"/>',
   focus:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>',
   growth:'<rect x="3" y="13" width="4" height="7" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="17" rx="1"/>',
   leaf:'<path d="M19.5 4.5c-8-1-15 1-15 8a6 6 0 0 0 6 6c7 0 10-7 9-14Z"/><path d="M4 21 15 10m-5 5v-4m0 4h4"/>',

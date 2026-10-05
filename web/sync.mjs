@@ -1,12 +1,12 @@
 import {defaultState,validateState} from './core.mjs';
-const groups=['profile','tasks','sessions','thoughts','courseHabits'];
+const groups=['profile','tasks','sessions','thoughts','courseHabits','events','focusPresets'];
 const keyOf=e=>`${e.group}:${e.id}`;
 const compare=(a,b)=>a.time-b.time || a.device.localeCompare(b.device);
 const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-export function payload(state){return {version:1,profile:structuredClone(state.profile),tasks:structuredClone(state.tasks),sessions:structuredClone(state.sessions),thoughts:structuredClone(state.thoughts),courseHabits:structuredClone(state.courseHabits||[]),active:null};}
+export function payload(state){return {version:1,profile:structuredClone(state.profile),tasks:structuredClone(state.tasks),sessions:structuredClone(state.sessions),thoughts:structuredClone(state.thoughts),courseHabits:structuredClone(state.courseHabits||[]),events:structuredClone(state.events||[]),focusPresets:structuredClone(state.focusPresets||[]),active:null};}
 function records(state){return [
   ...Object.entries(state.profile).map(([id,value])=>({group:'profile',id,value})),
-  ...['tasks','sessions','thoughts','courseHabits'].flatMap(group=>(state[group]||[]).map(value=>({group,id:value.id,value})))
+  ...['tasks','sessions','thoughts','courseHabits','events','focusPresets'].flatMap(group=>(state[group]||[]).map(value=>({group,id:value.id,value})))
 ];}
 export function validatePacket(packet){
   if(!packet||packet.version!==1||!Array.isArray(packet.entries)||packet.entries.length>200000)throw Error('云端记录格式不兼容');
@@ -21,7 +21,7 @@ export function validatePacket(packet){
 }
 export class SyncTracker {
   constructor(state,device){
-    this.device=device;this.entries=new Map();this.clock=0;
+    this.device=device;this.entries=new Map();this.clock=0;this.dirty=new Set(Array.isArray(state.sync?.dirty)?state.sync.dirty.filter(k=>typeof k==='string'&&k.length<=220):[]);this.conflicts=[];this.bases=new Map();if(Array.isArray(state.sync?.bases)){for(const e of validatePacket({version:1,entries:state.sync.bases}).entries)this.bases.set(keyOf(e),structuredClone(e));}
     if(state.sync?.packet){for(const e of validatePacket(state.sync.packet).entries){this.entries.set(keyOf(e),structuredClone(e));this.clock=Math.max(this.clock,e.clock.time);}}
     if(!state.sync?.packet){const defaults=defaultState().profile;for(const [id,value] of Object.entries(state.profile)){if(equal(value,defaults[id]))this.entries.set('profile:'+id,{group:'profile',id,value,clock:{time:0,device:this.device}});}}
     this.observe(state);
@@ -29,16 +29,20 @@ export class SyncTracker {
   stamp(){this.clock=Math.max(Date.now(),this.clock+1);return {time:this.clock,device:this.device};}
   observe(state){
     const live=new Set();let changed=false;
-    for(const e of records(state)){const key=keyOf(e);live.add(key);const old=this.entries.get(key);if(!old||!equal(old.value,e.value)){this.entries.set(key,{...structuredClone(e),clock:this.stamp()});changed=true;}}
-    for(const [key,e] of this.entries){if(!live.has(key)&&e.value!==null){this.entries.set(key,{...e,value:null,clock:this.stamp()});changed=true;}}
+    for(const e of records(state)){const key=keyOf(e);live.add(key);const old=this.entries.get(key);if(!old||!equal(old.value,e.value)){if(!this.dirty.has(key)&&old)this.bases.set(key,structuredClone(old));this.entries.set(key,{...structuredClone(e),clock:this.stamp()});this.dirty.add(key);changed=true;}}
+    for(const [key,e] of this.entries){if(!live.has(key)&&e.value!==null){if(!this.dirty.has(key))this.bases.set(key,structuredClone(e));this.entries.set(key,{...e,value:null,clock:this.stamp()});this.dirty.add(key);changed=true;}}
     return changed;
   }
-  merge(packets){packets.forEach(validatePacket);let changed=false;for(const packet of packets){for(const e of packet.entries){this.clock=Math.max(this.clock,e.clock.time);const old=this.entries.get(keyOf(e));if(!old||compare(e.clock,old.clock)>0){this.entries.set(keyOf(e),structuredClone(e));changed=true;}}}return changed;}
+  merge(packets){packets.forEach(validatePacket);let changed=false;for(const packet of packets){for(const e of packet.entries){this.clock=Math.max(this.clock,e.clock.time);const old=this.entries.get(keyOf(e)),base=this.bases.get(keyOf(e));if(old&&(!base||compare(e.clock,base.clock)>0&&!equal(e.value,base.value))&&this.dirty.has(keyOf(e))&&old.clock.device===this.device&&e.clock.device!==this.device&&old.clock.time>0&&!equal(old.value,e.value)){const conflict={id:keyOf(e)+':'+old.clock.time+':'+old.clock.device+':'+e.clock.time+':'+e.clock.device,group:e.group,recordId:e.id,local:structuredClone(old),remote:structuredClone(e),created:Date.now()};if(!this.conflicts.some(c=>c.id===conflict.id))this.conflicts.push(conflict);if(this.conflicts.length>100)this.conflicts.shift();}if(!old||compare(e.clock,old.clock)>0){this.entries.set(keyOf(e),structuredClone(e));changed=true;}}}return changed;}
+  settled(packet){for(const e of packet.entries){const current=this.entries.get(keyOf(e));if(current&&equal(current,e)){this.dirty.delete(keyOf(e));this.bases.delete(keyOf(e));}}}
+  takeConflicts(){const rows=this.conflicts;this.conflicts=[];return rows;}
   packet(){return {version:1,entries:[...this.entries.values()].sort((a,b)=>keyOf(a).localeCompare(keyOf(b)))};}
   apply(local){
-    const result={...local,profile:{...local.profile},tasks:[],sessions:[],thoughts:[],courseHabits:[]};
+    const result={...local,profile:{...local.profile},tasks:[],sessions:[],thoughts:[],courseHabits:[],events:[],focusPresets:[]};
     for(const e of this.entries.values()){if(e.value===null)continue;if(e.group==='profile')result.profile[e.id]=e.value;else result[e.group].push(structuredClone(e.value));}
     result.sessions.sort((a,b)=>a.ended-b.ended||a.id.localeCompare(b.id));result.thoughts.sort((a,b)=>a.created-b.created||a.id.localeCompare(b.id));
     return validateState(result);
   }
 }
+
+export function validConflict(c){try{if(!c||typeof c.id!=='string'||c.id.length>500||!Number.isFinite(c.created)||c.created<0||typeof c.recordId!=='string')return false;for(const side of ['local','remote']){const e=c[side];if(e?.group!==c.group||e.id!==c.recordId)return false;validatePacket({version:1,entries:[e]});}return true;}catch{return false;}}

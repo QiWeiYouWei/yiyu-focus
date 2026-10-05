@@ -5,6 +5,7 @@ if(globalThis.YiyuAndroid){
  globalThis.__yiyuReply=result=>{const p=pending.get(result.id);if(!p)return;clearTimeout(p.timer);pending.delete(result.id);result.ok?p.resolve(result.value):p.reject(Error(result.error||'操作未完成'));};
  function invoke(action,args=null){return new Promise((resolve,reject)=>{const id='android-'+(++next),timer=setTimeout(()=>{pending.delete(id);reject(Error('操作暂时没有响应，请保留当前窗口后重试'));},action==='backup:export'||action==='material:choose'?600000:120000);pending.set(id,{resolve,reject,timer});try{globalThis.YiyuAndroid.post(JSON.stringify({id,action,args}));}catch(error){clearTimeout(timer);pending.delete(id);reject(error);}});}
  window.desktop={platform:'android',
+  takeLaunch:()=>invoke('launch:take'),updatePresets:rows=>invoke('shortcuts:update',rows),pinPreset:id=>invoke('shortcuts:pin',id),calendarSchedule:events=>invoke('calendar:schedule',events),calendarSnooze:id=>invoke('calendar:snooze',id),
   load:async()=>{const data=await invoke('data:load');return data?validateState(data):null;},save:data=>invoke('data:save',validateState(data)),restore:data=>invoke('data:restore',validateState(data)),
   backups:()=>invoke('backup:list'),readBackup:async id=>validateState(await invoke('backup:read',id)),backupNow:data=>invoke('backup:now',validateState(data)),export:data=>invoke('backup:export',validateState(data)),
   chooseMaterial:()=>invoke('material:choose'),openMaterial:location=>invoke('material:open',location),notify:text=>invoke('notify',text),

@@ -2,7 +2,7 @@ import {dayKey} from './core.mjs';
 export const courseOf = record => (record.course || '').trim();
 export const courseLabel = course => course || '未分类';
 export function courseNames(state) {
-  return [...new Set([...state.tasks,...state.sessions,...state.thoughts,...(state.courseHabits||[]),state.active,state.draft].filter(Boolean).map(courseOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-CN'));
+  return [...new Set([...state.tasks,...state.sessions,...state.thoughts,...(state.events||[]),...(state.focusPresets||[]),...(state.courseHabits||[]),state.active,state.draft].filter(Boolean).map(courseOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-CN'));
 }
 export function filterSessions(sessions, course=null) {
   return course===null ? sessions : sessions.filter(s=>courseOf(s)===course);
@@ -13,15 +13,15 @@ export function courseTotals(sessions) {
   return [...totals.values()].sort((a,b)=>b.seconds-a.seconds||a.course.localeCompare(b.course,'zh-CN'));
 }
 export function resumeTarget(state) {
-  if(state.active?.kind==='focus')return {title:state.active.title,course:courseOf(state.active),context:'正在进行的这一段'};
+  if(state.active?.kind==='focus')return {quantity:state.active.quantity,title:state.active.title,course:courseOf(state.active),context:'正在进行的这一段'};
   if(state.draft?.edited&&!state.draft.title.trim())return null;
   if(state.draft?.title.trim()&&!state.draft.sessionId)return {...state.draft,title:state.draft.title.trim(),course:courseOf(state.draft),context:'上次留下的小目标'};
   const latest=[...state.sessions].sort((a,b)=>b.ended-a.ended||b.id.localeCompare(a.id))[0];
   const planned=state.tasks.filter(t=>!t.done&&t.plannedAt).sort((a,b)=>b.plannedAt-a.plannedAt)[0];
-  if(planned&&(!latest||planned.plannedAt>latest.ended))return {title:planned.title,course:courseOf(planned),context:'周回顾里留下的下一步'};
+  if(planned&&(!latest||planned.plannedAt>latest.ended))return {quantity:planned.quantity,title:planned.title,course:courseOf(planned),context:'周回顾里留下的下一步'};
   if(latest?.nextStep?.trim()&&!state.tasks.some(t=>t.done&&t.title===latest.nextStep&&courseOf(t)===courseOf(latest)))return {title:latest.nextStep.trim(),course:courseOf(latest),context:'上次学到：'+latest.title};
   const task=state.tasks.find(t=>!t.done);
-  if(task)return {title:task.title,course:courseOf(task),context:'待办里的下一件小事'};
+  if(task)return {quantity:task.quantity,title:task.title,course:courseOf(task),context:'待办里的下一件小事'};
   return latest ? {title:latest.title,course:courseOf(latest),context:'接着最近一次学习'} : null;
 }
 export function weeklyReview(state, now=Date.now(), course=null) {

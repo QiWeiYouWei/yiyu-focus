@@ -8,7 +8,7 @@ final class Reminders {
  // Compare boot counters instead of treating every delivery as a device reboot.
  static boolean changedBoot(int previous,int current){return previous>=0&&current>=0&&previous!=current;}
  static JSONObject checkBoot(Context c,StateStore store)throws Exception{int current=android.provider.Settings.Global.getInt(c.getContentResolver(),android.provider.Settings.Global.BOOT_COUNT,-1),previous=c.getSharedPreferences("native",0).getInt("bootCount",-1);JSONObject s=store.load();if(s!=null&&changedBoot(previous,current)){JSONObject a=s.optJSONObject("active");if(a!=null&&a.optBoolean("running")){a.put("running",false);a.put("anchor",System.currentTimeMillis());store.save(s);}}c.getSharedPreferences("native",0).edit().putInt("bootCount",current).apply();return s;}
- static void reschedule(Context c,JSONObject s)throws Exception{c.getSharedPreferences("native",0).edit().remove("deadline").apply();if(s!=null)schedule(c,s);}
+ static void reschedule(Context c,JSONObject s)throws Exception{c.getSharedPreferences("native",0).edit().remove("deadline").apply();if(s!=null){schedule(c,s);CalendarReminders.schedule(c,s,true);}}
  static final String CHANNEL="focus-gentle";static final int TIMER=20,NOTICE=21;
  static void channels(Context c){NotificationManager n=c.getSystemService(NotificationManager.class);n.createNotificationChannel(new NotificationChannel(CHANNEL,"专注与休息提醒",NotificationManager.IMPORTANCE_DEFAULT));n.createNotificationChannel(new NotificationChannel("focus-progress","正在专注",NotificationManager.IMPORTANCE_LOW));}
  static PendingIntent open(Context c){return PendingIntent.getActivity(c,0,new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);}
