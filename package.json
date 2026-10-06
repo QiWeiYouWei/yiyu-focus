@@ -1,6 +1,6 @@
 {
   "name": "yiyu-focus",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "description": "一隅 Focus — 留一点时间给真正重要的事",
   "main": "desktop/main.cjs",
   "author": "Focus",
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "node scripts/serve.cjs",
-    "test": "node --test tests/core.test.mjs tests/learning.test.mjs tests/workflow.test.mjs tests/data-store.test.cjs tests/sync.test.mjs tests/webdav.test.cjs tests/planning.test.mjs tests/journey.test.mjs tests/growth.test.mjs",
+    "test": "node --test tests/core.test.mjs tests/learning.test.mjs tests/workflow.test.mjs tests/data-store.test.cjs tests/sync.test.mjs tests/webdav.test.cjs tests/planning.test.mjs tests/journey.test.mjs tests/growth.test.mjs tests/evolution.test.mjs",
     "test:sync-ui": "node tests/sync-ui.cjs",
     "test:ui": "node tests/ui.cjs",
     "test:desktop": "node tests/desktop.cjs",
@@ -28,7 +28,10 @@
     "test:android-quick": "node tests/android-quick-focus.cjs",
     "test:journey": "node tests/journey-ui.cjs",
     "test:android-journey": "node tests/android-journey.cjs",
-    "test:growth": "node tests/growth-ui.cjs"
+    "test:growth": "node tests/growth-ui.cjs",
+    "test:evolution": "node tests/evolution-ui.cjs",
+    "test:relay": "node tests/relay-ui.cjs",
+    "test:android-evolution": "node tests/android-evolution.cjs"
   },
   "build": {
     "appId": "local.yiyu.focus",

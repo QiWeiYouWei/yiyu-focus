@@ -38,6 +38,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path test-results -Force | Out-Null
           npm run test:growth
+          npm run test:evolution
+          npm run test:relay
       - name: Build Windows portable app
         run: npm run dist -- --publish never --config.electronDist=node_modules/electron/dist
       - name: Verify final Windows executable

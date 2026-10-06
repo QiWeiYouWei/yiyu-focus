@@ -1,9 +1,9 @@
 {
-  "version": "0.11.1",
+  "version": "0.12.0",
   "android": {
-    "file": "distribution/Yiyu-Focus-0.11.1-Android.apk",
-    "bytes": 2169056,
-    "sha256": "94f535bfa64e43c85d73bb8d2f5ce5dda3a004fe89a8a831774839636077adee"
+    "file": "distribution/Yiyu-Focus-0.12.0-Android.apk",
+    "bytes": 2187212,
+    "sha256": "1d9ad8630267ff3345abc5d0d0a8d1f3d324c1465dbcf6f7a32c2dae42d4b914"
   },
-  "notes": "docs/releases/0.11.1.md"
+  "notes": "docs/releases/0.12.0.md"
 }

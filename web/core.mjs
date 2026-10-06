@@ -1,3 +1,4 @@
+import {sessionParts,validParts,validSegments} from './time-records.mjs';
 import {dayKey,validQuantity,validEvent,validPreset} from './planning.mjs';
 export {dayKey} from './planning.mjs';
 export const defaultState = () => ({ version: 1, profile: { name: '学习中的你', motto: '慢慢来，每一次回来都算数。', goal: 60, duration: 15, breakMinutes: 5, sound: true }, tasks: [], sessions: [], thoughts: [], active: null, draft: {title: '', course: ''}, courseHabits: [], events: [], focusPresets: [], trash: [] });
@@ -6,11 +7,13 @@ export function elapsed(active, now = Date.now()) {
   return Math.min(active.duration * 60000, Math.max(0, active.elapsed + (active.running ? Math.max(0, now-active.anchor) : 0)));
 }
 export function checkpoint(active, now = Date.now(), pause = false) {
-  return active ? { ...active, elapsed: elapsed(active, now), anchor: now, running: pause ? false : active.running } : null;
+  if(!active)return null;const used=elapsed(active,now),next={...active,elapsed:used,anchor:now,running:pause?false:active.running};
+  if(active.segments!==undefined){next.segments=structuredClone(active.segments);const delta=used-active.elapsed;if(delta>0){const last=next.segments.at(-1);if(last?.end===active.anchor)last.end+=delta;else next.segments.push({start:active.anchor,end:active.anchor+delta});}}
+  return next;
 }
 export function dailyTotals(sessions) {
   const map = {};
-  for (const s of sessions) map[s.day] = (map[s.day] || 0) + s.seconds;
+  for(const s of sessions)for(const p of sessionParts(s))map[p.day]=(map[p.day]||0)+p.seconds;
   return map;
 }
 export function stats(sessions, now = Date.now()) {
@@ -38,11 +41,16 @@ export function validateState(s) {
   if (!str(p.name,40) || !str(p.motto,120) || !finite(p.goal,5,720) || !finite(p.duration,1,120) || !finite(p.breakMinutes,1,30) || typeof p.sound !== 'boolean') throw Error('个人设置格式有误');
   if (!s.tasks.every(t=>str(t.id,100)&&str(t.title,200)&&extra(t)&&(t.plannedAt===undefined||finite(t.plannedAt,0,1e14))&&typeof t.done==='boolean')) throw Error('任务格式有误');
   if (!s.thoughts.every(t=>str(t.id,100)&&str(t.text,1000)&&extra(t)&&optional(t.sessionId,100)&&(t.source===undefined||['focus','inbox'].includes(t.source))&&typeof t.done==='boolean'&&finite(t.created,0,1e14))) throw Error('分心记录格式有误');
-  if (!s.sessions.every(t=>str(t.id,100)&&str(t.title,200)&&str(t.note,2000)&&extra(t)&&finite(t.seconds,0,7200)&&finite(t.ended,0,1e14)&&typeof t.completed==='boolean'&&/^\d{4}-\d{2}-\d{2}$/.test(t.day)&&dayKey(t.ended)===t.day)) throw Error('专注记录格式有误');
+  if (!s.sessions.every(t=>str(t.id,100)&&str(t.title,200)&&str(t.note,2000)&&extra(t)&&validParts(t)&&(t.source===undefined||['timer','manual'].includes(t.source))&&(t.corrected===undefined||typeof t.corrected==='boolean')&&(t.editedAt===undefined||finite(t.editedAt,0,1e14))&&finite(t.seconds,0,7200)&&finite(t.ended,0,1e14)&&typeof t.completed==='boolean'&&/^\d{4}-\d{2}-\d{2}$/.test(t.day)&&dayKey(t.ended)===t.day)) throw Error('专注记录格式有误');
   if (s.active !== null) {
     const a=s.active;
-    if (!a || !str(a.id,100)|| !str(a.title,200)||!extra(a)||!['focus','break'].includes(a.kind)||!finite(a.duration,1,120)||!finite(a.elapsed,0,a.duration*60000)||!finite(a.anchor,0,1e14)||typeof a.running!=='boolean'||(a.goalDuration!==undefined&&(!finite(a.goalDuration,1,a.duration)))||['waiting','paragraph'].some(key=>a[key]!==undefined&&typeof a[key]!=='boolean')) throw Error('计时状态格式有误');
+    if (!a || !str(a.id,100)|| !str(a.title,200)||!extra(a)||(a.handoffId!==undefined&&!str(a.handoffId,100))||(a.segments!==undefined&&!validSegments(a.segments,a.elapsed))||!['focus','break'].includes(a.kind)||!finite(a.duration,1,120)||!finite(a.elapsed,0,a.duration*60000)||!finite(a.anchor,0,1e14)||typeof a.running!=='boolean'||(a.goalDuration!==undefined&&(!finite(a.goalDuration,1,a.duration)))||['waiting','paragraph'].some(key=>a[key]!==undefined&&typeof a[key]!=='boolean')) throw Error('计时状态格式有误');
   }
+  if(s.interface!==undefined&&(!s.interface||typeof s.interface.autoZen!=='boolean'||!['off','leaf','confetti'].includes(s.interface.celebration)))throw Error('界面偏好格式有误');
+  if(s.handoffReceipts!==undefined&&(!Array.isArray(s.handoffReceipts)||s.handoffReceipts.length>1000||!s.handoffReceipts.every(v=>str(v,100))))throw Error('接力凭据格式有误');
+  if(s.celebrated!==undefined&&(!Array.isArray(s.celebrated)||s.celebrated.length>1000||!s.celebrated.every(v=>str(v,100))))throw Error('完成反馈记录格式有误');
+  for(const record of s.sessions)if(record.original!==undefined){const o=record.original;if(!o||!finite(o.seconds,0,7200)||!finite(o.ended,0,1e14)||o.day!==dayKey(o.ended)||!validParts(o))throw Error('原始专注记录格式有误');}
+  if(s.handoffPending!==undefined){const t=s.handoffPending;if(!t||!str(t.id,100)||t.status!=='offered'||!str(t.from,100)||!str(t.label,40)||!str(t.position,200)||!finite(t.created,0,1e14)||t.active?.kind!=='focus'||t.active.running||t.active.handoffId||s.active?.handoffId!==t.id||s.active.id!==t.active.id)throw Error('待交接凭据格式有误');validateState({...defaultState(),active:t.active});}
   if(s.courseHabits!==undefined&&(!Array.isArray(s.courseHabits)||s.courseHabits.length>2000||!s.courseHabits.every(h=>h&&str(h.id,100)&&str(h.course,40)&&h.course.trim()&&finite(h.minutes,1,120)&&str(h.material,2000)&&str(h.position,200)&&finite(h.updated,0,1e14))))throw Error('课程学习习惯格式有误');
   if(s.events!==undefined&&(!Array.isArray(s.events)||s.events.length>100000||!s.events.every(validEvent)||new Set(s.events.map(e=>e.id)).size!==s.events.length))throw Error('日历安排格式有误');
   if(s.focusPresets!==undefined&&(!Array.isArray(s.focusPresets)||s.focusPresets.length>2000||!s.focusPresets.every(validPreset)||new Set(s.focusPresets.map(p=>p.id)).size!==s.focusPresets.length))throw Error('快速专注事件格式有误');

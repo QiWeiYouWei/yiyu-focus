@@ -1,3 +1,7 @@
+import {setupRecordEditor} from './improvements-ui.mjs';
+import {sessionParts,splitIntervals} from './time-records.mjs';
+import {setupRelay} from './relay-ui.mjs';
+import {milestone,showCelebration} from './celebration.mjs';
 import {setupGrowthCharts} from './growth-ui.mjs';
 import {setupReminders} from './reminder-ui.mjs';
 import {orderedPresets,weeklyInsights} from './journey.mjs';
@@ -15,6 +19,8 @@ const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const id=()=>crypto.randomUUID();
 let state=defaultState(), page='focus', duration=15, reviewId=null, pinned=false, loadFailed=false, toastTimeout, lastSaved=0, syncUI=null, reviewIsEdit=false, selectedDay=null, draftTimer, lastMini='';
 const storageKey='yiyu-focus-v1';
+const recordsEditor=setupRecordEditor({getState:()=>state,save,renderAll:render,toast});
+const relay=setupRelay({getState:()=>state,save,renderAll:render,toast,confirmAction,escape,onReceived:()=>{duration=state.active.duration;navigate('focus');if(state.interface?.autoZen)setZen(true);}});
 const quickFocus=setupQuickFocus({getState:()=>state,getPage:()=>page,isBlocked:()=>loadFailed,save,renderAll:render,startPreset,toast,confirmAction,recycle,escape,icon});
 const calendar=setupCalendar({getState:()=>state,save,renderAll:render,toast,confirmAction,recycle,startEvent,escape});
 const reminders=setupReminders({getState:()=>state,toast,navigate,showEvent:id=>calendar.show(id)});
@@ -43,7 +49,7 @@ function navigate(next){
   $('#breadcrumb').innerHTML='我的空间 <span>/</span> '+({focus:'专注',calendar:'日历安排',quick:'快速专注',growth:'成长',inbox:'念头暂存',history:'学习足迹',settings:'偏好',account:'账号'}[page]);
   $$('.nav[data-page]').forEach(el=>{if(el.dataset.page===page||(page==='quick'&&el.dataset.page==='focus'))el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});if(page!=='focus')setZen(false);render();window.scrollTo({top:0,behavior:'instant'});entrance($('#page-'+page));
 }
-function sessionHTML(s){return `<article class="record"><div class="record-head"><strong>${escape(s.title)}</strong><span class="record-time">${pretty(s.seconds)} · ${s.completed?'已完成':'提前结束'}</span></div><div class="record-meta"><span class="course-badge">${escape(courseLabel(courseOf(s)))}</span><span class="muted">${formatDate(s.ended)}</span></div>${s.quantity?`<span class="quantity-record">${escape(quantityLabel(s.quantity))}</span>`:''}${s.note?`<p>${escape(s.note)}</p>`:''}${s.question?`<div class="record-question ${s.questionResolved?'resolved':''}"><span>${s.questionResolved?'已解决':'待解决'}</span><p>${escape(s.question)}</p><button class="text-button" data-resolve-question="${escape(s.id)}">${s.questionResolved?'重新记为待解决':'标记已解决'}</button></div>`:''}${s.nextStep?`<div class="record-next"><span>下一步</span> ${escape(s.nextStep)}</div>`:''}<button class="text-button" data-edit-note="${escape(s.id)}">编辑收获与课程 ↗</button><button class="text-button record-delete" data-delete-session="${escape(s.id)}">移入回收站</button></article>`;}
+function sessionHTML(s){const marker=s.source==='manual'?'手动补记':s.corrected?'已修正':'';return `<article class="record"><div class="record-head"><strong>${escape(s.title)}</strong><span class="record-time">${pretty(s.seconds)} · ${s.completed?'已完成':'提前结束'}</span></div><div class="record-meta"><span class="course-badge">${escape(courseLabel(courseOf(s)))}</span><span class="muted">${formatDate(s.ended)}</span>${marker?`<span class="record-source">${marker}${s.corrected&&s.original?' · 原 '+pretty(s.original.seconds):''}</span>`:''}</div>${s.quantity?`<span class="quantity-record">${escape(quantityLabel(s.quantity))}</span>`:''}${s.note?`<p>${escape(s.note)}</p>`:''}${s.question?`<div class="record-question ${s.questionResolved?'resolved':''}"><span>${s.questionResolved?'已解决':'待解决'}</span><p>${escape(s.question)}</p><button class="text-button" data-resolve-question="${escape(s.id)}">${s.questionResolved?'重新记为待解决':'标记已解决'}</button></div>`:''}${s.nextStep?`<div class="record-next"><span>下一步</span> ${escape(s.nextStep)}</div>`:''}<button class="text-button" data-edit-time="${escape(s.id)}">修正时长 ↗</button><button class="text-button" data-edit-note="${escape(s.id)}">编辑收获与课程 ↗</button><button class="text-button record-delete" data-delete-session="${escape(s.id)}">移入回收站</button></article>`;}
 function selectedCourse(selector){const value=$(selector).value;return value==='all'||!value?null:JSON.parse(value);}
 function renderCourses(){
   const names=courseNames(state);$('#course-suggestions').innerHTML=names.map(name=>`<option value="${escape(name)}"></option>`).join('');
@@ -59,17 +65,17 @@ function renderResume(){
   $('#resume-heading').textContent=a?.kind==='focus'?'回来，只做这一件事':target?'接着上次的一小步':'从容易开始的一步出发';
   $('#resume-context').textContent=target?.context||'';$('#resume-target').textContent=target?.title||'写下一个小目标，再留给它 5 分钟。';
   $('#resume-course').hidden=!target;$('#resume-course').textContent=courseLabel(target?.course||'');
-  $('#quick-resume').disabled=loadFailed||!!a&&(a.running||a.kind==='break');$('#quick-resume').textContent=a?(a.kind==='break'?'休息后再开始':a.running?'正在专注':'继续当前这一段 →'):'先做 5 分钟 →';
+  $('#quick-resume').disabled=loadFailed||!!a&&(a.running||a.kind==='break'||!!a.handoffId);$('#quick-resume').textContent=a?(a.kind==='break'?'休息后再开始':a.running?'正在专注':'继续当前这一段 →'):'先做 5 分钟 →';
 }
 function renderDay(){
-  const course=selectedCourse('#growth-course'),records=filterSessions(state.sessions,course).filter(s=>s.day===selectedDay).sort((a,b)=>b.ended-a.ended);
+  const course=selectedCourse('#growth-course'),records=filterSessions(state.sessions,course).filter(s=>sessionParts(s).some(p=>p.day===selectedDay)).sort((a,b)=>b.ended-a.ended);
   $('#day-title').textContent=selectedDay+' 的学习';$('#detail-date').value=selectedDay;
-  $('#day-summary').textContent=`${course===null?'全部课程':courseLabel(course)} · ${records.length} 次专注 · ${pretty(records.reduce((sum,s)=>sum+s.seconds,0))}`;
-  $('#day-records').innerHTML=records.length?records.map(sessionHTML).join(''):'<p class="detail-empty">这一天还没有'+(course===null?'':escape(courseLabel(course))+'的')+'专注记录。留白也没关系。</p>';
+  $('#day-summary').textContent=`${course===null?'全部课程':courseLabel(course)} · ${records.length} 次专注 · ${pretty(records.reduce((sum,s)=>sum+sessionParts(s).filter(p=>p.day===selectedDay).reduce((n,p)=>n+p.seconds,0),0))}`;
+  $('#day-records').innerHTML=records.length?records.map(s=>sessionHTML(s)+(s.parts?.length>1?'<p class="micro-copy">本日计入 '+pretty(sessionParts(s).filter(p=>p.day===selectedDay).reduce((n,p)=>n+p.seconds,0))+'；上方显示整段时长。</p>':'')).join(''):'<p class="detail-empty">这一天还没有'+(course===null?'':escape(courseLabel(course))+'的')+'专注记录。留白也没关系。</p>';
 }
 function openDay(day){selectedDay=day;renderDay();if(!$('#day-dialog').open)$('#day-dialog').showModal();}
 function renderCourseTotals(){
-  const sessions=$('#course-period').value==='all'?state.sessions:weeklyReview(state).sessions,rows=courseTotals(sessions),max=Math.max(1,...rows.map(r=>r.seconds));
+  const review=weeklyReview(state),sessions=$('#course-period').value==='all'?state.sessions:review.sessions.map(s=>({...s,seconds:sessionParts(s).filter(p=>p.day>=review.start&&p.day<=review.end).reduce((n,p)=>n+p.seconds,0)})),rows=courseTotals(sessions),max=Math.max(1,...rows.map(r=>r.seconds));
   $('#course-totals').innerHTML=rows.length?rows.map(row=>`<button class="course-total" data-course-filter="${escape(JSON.stringify(row.course))}"><span class="course-total-top"><strong>${escape(courseLabel(row.course))}</strong><span>${pretty(row.seconds)} · ${row.count} 次</span></span><progress value="${row.seconds}" max="${max}" aria-label="${escape(courseLabel(row.course))}投入时长"></progress></button>`).join(''):'<p class="muted">这里会显示你实际投入过的课程。</p>';
 }
 function renderWeekReview(){
@@ -81,15 +87,16 @@ function renderWeekReview(){
   const questions=review.sessions.filter(s=>s.question&&!s.questionResolved);$('#week-questions').innerHTML=questions.length?questions.slice(0,4).map(s=>`<div class="review-item"><p>${escape(s.question)}</p><small>${escape(s.title)} · ${escape(courseLabel(courseOf(s)))}</small></div>`).join(''):'<p class="muted">没有留下待解决的问题。</p>';
   $('#week-thoughts').innerHTML=review.thoughts.length?review.thoughts.slice(0,4).map(t=>`<div class="review-item thought-summary"><p>${escape(t.text)}</p><small>${t.count} 次暂存</small></div>`).join(''):'<p class="muted">这 7 天没有专注时暂存的念头。旧版念头仍可在“念头暂存”查看。</p>';
 }
-function render(){quickFocus.render();renderHabitContext();renderCourses();renderResume();renderTimer();renderToday();renderTasks();renderThoughts();if(page==='calendar')calendar.render();if(page==='growth')renderGrowth();if(page==='history')renderHistory();if(page==='settings')renderSettings();if($('#day-dialog').open)renderDay();}
+function render(){relay.render();quickFocus.render();renderHabitContext();renderCourses();renderResume();renderTimer();renderToday();renderTasks();renderThoughts();if(page==='calendar')calendar.render();if(page==='growth')renderGrowth();if(page==='history')renderHistory();if(page==='settings')renderSettings();if($('#day-dialog').open)renderDay();}
 function renderTimer(){
-  const a=state.active, remaining=a?Math.max(0,a.duration*60000-elapsed(a)):duration*60000;
+  const a=state.active;$('.timer-card').dataset.active=String(!!a);$('#zen-target').textContent=a?.title||$('#intention').value;$('#zen-position').textContent=[courseOf(a||state.draft||{}),a?.position||state.courseHabits?.find(h=>h.course===courseOf(a||state.draft||{}))?.position||''].filter(Boolean).join(' · ');const remaining=a?Math.max(0,a.duration*60000-elapsed(a)):duration*60000;
   const view=timerView(a,duration);$('#timer').textContent=view.text;$('#soft-end').hidden=!view.waiting;$('#start').hidden=view.waiting;
   $('#ring-progress').style.strokeDashoffset=String(791.682*(a?elapsed(a)/(a.duration*60000):0));
   document.body.dataset.timerState=a?(a.running?'running':'paused'):'idle';const isBreak=a?.kind==='break';document.body.classList.toggle('is-break',isBreak);
   setText($('#timer-mode'),isBreak?'休息时间':'专注时间');setText($('#timer-overline'),a?(isBreak?'给注意力充充电':a.running?'此刻，正在向前':'慢一点，也没关系'):'留一小段时间给自己');
-  $('#timer-caption').textContent=a?.waiting?'时间到了，由你决定怎样收尾':a?.paragraph?'慢慢读完，结束时点“这段读完了”':a?(a.running?(isBreak?'起身走走，看看远处':'你只需要专注于眼前这一步'):'已经暂停，准备好再继续'):'从一小步开始，就很好';
+  $('#timer-caption').textContent=a?.handoffId?'已暂停，等待另一台设备接手':a?.waiting?'时间到了，由你决定怎样收尾':a?.paragraph?'慢慢读完，结束时点“这段读完了”':a?(a.running?(isBreak?'起身走走，看看远处':'你只需要专注于眼前这一步'):'已经暂停，准备好再继续'):'从一小步开始，就很好';
   setButton($('#start'),a?(a.running?'暂停片刻':'继续这一段'):'开始专注',a?.running?'pause':'play');
+  $('#start').disabled=loadFailed||!!a?.handoffId;$('#finish').disabled=!!a?.handoffId;$('#quick-resume').disabled=loadFailed||!!a&&(a.running||a.kind==='break'||!!a.handoffId);$('#soft-extend').disabled=!!a?.handoffId;$('#soft-paragraph').disabled=!!a?.handoffId;$('#soft-finish').disabled=!!a?.handoffId;
   $('#finish').hidden=!a;$('#finish').textContent=isBreak?'结束休息':a?.paragraph?'这段读完了':a?.waiting?'现在结束':'提前结束';
   $('#intention').disabled=!!a;$('#focus-course').disabled=!!a;if(a?.kind==='focus'){$('#intention').value=a.title;$('#focus-course').value=courseOf(a);}
   $$('[data-minutes]').forEach(el=>{el.disabled=!!a;el.setAttribute('aria-pressed',String(Number(el.dataset.minutes)===duration));el.classList.toggle('selected',Number(el.dataset.minutes)===duration);});$('#custom-minutes').disabled=!!a;
@@ -98,7 +105,7 @@ function renderTimer(){
   $('#edit-quantity').disabled=!!a;$('#edit-quantity').textContent=quantityLabel(a?.kind==='focus'?a.quantity:state.draft?.quantity)||'学习量目标';
   publishMini();document.title=a?`${$('#timer').textContent} · ${isBreak?'休息':'专注'} — 一隅 Focus`:'一隅 Focus';
 }
-function renderToday(){const s=stats(state.sessions);$('#today-minutes').textContent=Math.floor(s.today/60);$('#daily-goal').textContent=state.profile.goal;$('#goal-progress').max=state.profile.goal;$('#goal-progress').value=s.today/60;$('#today-sessions').textContent=state.sessions.filter(r=>r.day===dayKey()).length;$('#today-streak').textContent=s.streak;$('#goal-copy').textContent=s.today>=state.profile.goal*60?'今天的约定，已经做到啦。':s.today>0?`还差 ${Math.ceil(state.profile.goal-s.today/60)} 分钟，一小步一小步来。`:'第一段专注，从现在开始。';}
+function renderToday(){const s=stats(state.sessions);$('#today-minutes').textContent=Math.floor(s.today/60);$('#daily-goal').textContent=state.profile.goal;$('#goal-progress').max=state.profile.goal;$('#goal-progress').value=s.today/60;$('#today-sessions').textContent=state.sessions.filter(r=>sessionParts(r).some(p=>p.day===dayKey())).length;$('#today-streak').textContent=s.streak;$('#goal-copy').textContent=s.today>=state.profile.goal*60?'今天的约定，已经做到啦。':s.today>0?`还差 ${Math.ceil(state.profile.goal-s.today/60)} 分钟，一小步一小步来。`:'第一段专注，从现在开始。';}
 function renderTasks(){
   const open=state.tasks.filter(t=>!t.done);$('#task-count').textContent=`${open.length} 项待办`;
   $('#task-list').innerHTML=state.tasks.length?state.tasks.map(t=>`<div class="task-row ${t.done?'done':''}"><input class="task-check" type="checkbox" data-check-task="${escape(t.id)}" ${t.done?'checked':''} aria-label="完成 ${escape(t.title)}"><button class="task-title" data-use-task="${escape(t.id)}" title="带入专注">${escape(t.title)}<small class="task-course">${escape(courseLabel(courseOf(t)))}${t.quantity?' · '+escape(quantityLabel(t.quantity)):''}</small></button><button class="delete" data-delete-task="${escape(t.id)}" aria-label="删除 ${escape(t.title)}">×</button></div>`).join(''):'<p class="micro-copy">暂时没有目标。写一件小事就好。</p>';
@@ -130,20 +137,21 @@ function renderGrowth(){
   growthCharts.render();renderInsights();renderCourseTotals();renderWeekReview();const total=week.reduce((n,d)=>n+d.value,0);$('#weekly-summary').textContent=total?`最近 7 天，你为重要的事情留下了 ${pretty(total)}。不必和别人比较，这些时间属于你。`:'这里会慢慢长出你的专注轨迹。从一小段时间开始，让积累自然发生。';
 }
 function renderInsights(){const insights=weeklyInsights(state,Date.now(),selectedCourse('#growth-course'));$('#week-suggestions').innerHTML=insights.suggestions.map(t=>'<p>'+escape(t)+'</p>').join('');$('#insight-courses').innerHTML=insights.courses.length?insights.courses.map(c=>'<div class="insight-row"><strong>'+escape(c.course)+'</strong><span>'+pretty(c.seconds)+c.quantities.map(q=>' · '+escape(q.actual+' '+q.unit)).join('')+'</span></div>').join(''):'<p class="muted">开始学习后，这里会显示实际投入。</p>';$('#insight-quantities').innerHTML=insights.targets.map(q=>'<div class="insight-row"><span>'+escape(q.unit)+'（'+q.count+' 次有填写完成量）</span><strong>'+Math.round(q.actual*1000)/1000+' / '+q.target+' · '+Math.round(q.actual/q.target*100)+'%</strong></div>').join('');$('#insight-reasons').innerHTML=insights.causes.length?insights.causes.map(r=>'<div class="insight-row"><span>'+escape(r.label)+'</span><strong>'+r.count+' 次</strong></div>').join(''):'<p class="muted">暂时没有记录分心原因。</p>';}
-function renderSettings(){for(const key of ['name','motto','goal','duration','breakMinutes'])$('#settings-form').elements[key].value=state.profile[key];renderTrash();refreshBackups();loadDesktopPreferences();}
+function renderSettings(){$('#auto-zen').checked=!!state.interface?.autoZen;$('#celebration-mode').value=state.interface?.celebration||'leaf';for(const key of ['name','motto','goal','duration','breakMinutes'])$('#settings-form').elements[key].value=state.profile[key];renderTrash();refreshBackups();loadDesktopPreferences();}
 async function notify(text){if(window.desktop)await window.desktop.notify(text).catch(()=>{});if(!state.profile.sound)return;try{const context=new AudioContext();const oscillator=context.createOscillator(),gain=context.createGain();oscillator.connect(gain);gain.connect(context.destination);oscillator.type='sine';oscillator.frequency.value=659;gain.gain.setValueAtTime(.1,context.currentTime);gain.gain.exponentialRampToValueAtTime(.001,context.currentTime+1.3);oscillator.start();oscillator.stop(context.currentTime+1.3);oscillator.onended=()=>context.close();}catch{}}
 function startEvent(event){if(state.active){toast('先结束当前计时，再开始新的安排。');return;}startPreset({...event,minutes:event.focusMinutes||state.profile.duration,eventId:event.id});}
 function startPreset(preset){if(loadFailed){toast('记录尚未正确载入，请先恢复本机数据。');return;}if(state.active){toast('先结束当前计时，再开始新的事件。');return;}setDraft({...preset,...(!preset.eventId?{presetId:preset.id}:{})});duration=preset.minutes;$('#custom-minutes').value='';start();navigate('focus');}
 function start(){
+  if(state.active?.handoffId){toast('这一段正在交接，请刷新接力或撤回后继续。');return;}
   if(state.active?.waiting){toast('选择读完这一段、延长或结束就好。');return;}
   if(state.active){state.active=checkpoint(state.active);state.active.running=!state.active.running;state.active.anchor=Date.now();}
-  else {const title=$('#intention').value.trim();if(!title){toast('先写下一个小目标，专注更有方向。');$('#intention').focus();return;}const course=$('#focus-course').value.trim();const quantity=state.draft?.quantity?{target:state.draft.quantity.target,unit:state.draft.quantity.unit}:undefined;state.draft={title,course,...linked(state.draft),...(quantity?{quantity}:{}),edited:true};state.active={id:id(),kind:'focus',title,course,...linked(state.draft),...(quantity?{quantity}:{}),duration,elapsed:0,anchor:Date.now(),running:true};}
-  persist();renderTimer();renderResume();
+  else {const title=$('#intention').value.trim();if(!title){toast('先写下一个小目标，专注更有方向。');$('#intention').focus();return;}const course=$('#focus-course').value.trim();const quantity=state.draft?.quantity?{target:state.draft.quantity.target,unit:state.draft.quantity.unit}:undefined;state.draft={title,course,...linked(state.draft),...(quantity?{quantity}:{}),edited:true};state.active={id:id(),kind:'focus',title,course,...linked(state.draft),...(quantity?{quantity}:{}),duration,elapsed:0,segments:[],anchor:Date.now(),running:true};if(state.interface?.autoZen)setZen(true);}
+  if(state.interface?.autoZen&&state.active?.kind==='focus'&&state.active.running)setZen(true);persist();renderTimer();renderResume();
 }
 function pause(){if(state.active){state.active=checkpoint(state.active,Date.now(),true);renderTimer();renderResume();return persist();}return Promise.resolve();}
 window.prepareForBackground=async()=>{if(loadFailed)return;clearTimeout(draftTimer);if(state.active)state.active=checkpoint(state.active);await save();};
 window.resumeFromMobile=async()=>{if(loadFailed)return;const current=await window.desktop.load();if(current){state.active=current.active;if(state.active?.running&&elapsed(state.active)>=state.active.duration*60000){if(state.active.kind==='focus')state.active=reachGoal(state.active);else state.active=null;}await save();render();}window.mobileRefresh?.();};
-window.mobileBack=()=>{const dialog=$('dialog[open]');if(dialog){if(dialog.id==='review-dialog')saveReview(!reviewIsEdit);else if(dialog.id==='confirm-dialog')$('#confirm-no').click();else dialog.close();return true;}if(page!=='focus'){navigate('focus');return true;}if(document.body.classList.contains('zen-mode')){setZen(false);return true;}return false;};
+window.mobileBack=()=>{const dialog=$('dialog[open]');if(dialog){if(dialog.id==='review-dialog')saveReview(!reviewIsEdit);else if(dialog.id==='confirm-dialog')$('#confirm-no').click();else if(dialog.id==='series-delete-dialog')$('#series-delete-cancel').click();else dialog.close();return true;}if(page!=='focus'){navigate('focus');return true;}if(document.body.classList.contains('zen-mode')){setZen(false);return true;}return false;};
 window.prepareToClose=async()=>{if(loadFailed)return;clearTimeout(draftTimer);if(state.active)state.active=checkpoint(state.active,Date.now(),true);await save();};
 function openReview(session,edit=false){
   reviewId=session.id;reviewIsEdit=edit;
@@ -154,13 +162,13 @@ function openReview(session,edit=false){
   $('#review-skip').textContent=edit?'取消':'回到空间';$('#review-submit').textContent=edit?'保存修改':'保存收获，休息一下 →';$('#review-dialog').showModal();
 }
 function finish(){
-  const a=state.active;if(!a)return;
-  const used=elapsed(a),completed=used>=(a.goalDuration||a.duration)*60000;state.active=null;
+  const a=state.active;if(!a||a.handoffId)return;const beforeSessions=structuredClone(state.sessions);
+  const ended=Date.now(),timed=checkpoint(a,ended,true),used=timed.elapsed,completed=used>=(a.goalDuration||a.duration)*60000;state.active=null;
   if(a.kind==='break'){persist();render();toast('休息结束。准备好了，再开始下一小段。');notify('休息结束，准备好再开始下一段。');return;}
   const seconds=Math.floor(used/1000);
   if(seconds<1){persist();render();toast('这一段已取消，还没有产生专注时间。');return;}
-  const ended=Date.now();const session={id:a.id,title:a.title,seconds,ended,day:dayKey(ended),completed,note:'',course:courseOf(a),nextStep:'',...linked(a),...(a.quantity?{quantity:{target:a.quantity.target,unit:a.quantity.unit}}:{})};
-  state.sessions.push(session);persist();render();
+  const session={id:a.id,title:a.title,source:'timer',...(timed.segments!==undefined?{parts:splitIntervals(timed.segments,seconds)}:{}),seconds,ended,day:dayKey(ended),completed,note:'',course:courseOf(a),...(a.position?{position:a.position}:{}),nextStep:'',...linked(a),...(a.quantity?{quantity:{target:a.quantity.target,unit:a.quantity.unit}}:{})};
+  state.sessions.push(session);const result=milestone(beforeSessions,state.sessions,state.profile.goal);if(result&&!(state.celebrated||[]).includes(result.key)){state.celebrated=[...(state.celebrated||[]),result.key].slice(-1000);save().then(()=>showCelebration(result.text,state.interface?.celebration||'leaf')).catch(()=>{});}else persist();setZen(false);render();
   if($('#thought-dialog').open)$('#thought-dialog').close();if($('#return-dialog').open)$('#return-dialog').close();
   if($('#confirm-dialog').open)$('#confirm-no').click();
   openReview(session);if(completed)notify('这一段专注完成了。留下收获，休息一下吧。');
@@ -208,6 +216,8 @@ $('#history-search').oninput=renderHistory;$('#unresolved-only').onchange=render
 $('#history-list').onclick=recordAction;
 $('#heatmap-year').onchange=renderGrowth;
 $('#heatmap').onclick=e=>{const cell=e.target.closest('[data-day]');if(cell)openDay(cell.dataset.day);};
+$('#interface-preferences').onsubmit=async e=>{e.preventDefault();const previous=state.interface;state.interface={autoZen:$('#auto-zen').checked,celebration:$('#celebration-mode').value};try{await save();toast('界面偏好已保存。');}catch(error){state.interface=previous;toast(error.message);}};
+$('#celebration-preview').onclick=()=>showCelebration('这一小步，认真度过了。',$('#celebration-mode').value);
 $('#settings-form').onsubmit=e=>{e.preventDefault();const form=e.target.elements;for(const key of ['name','motto'])state.profile[key]=form[key].value.trim();for(const key of ['goal','duration','breakMinutes'])state.profile[key]=Number(form[key].value);if(!state.active)duration=state.profile.duration;persist();renderToday();toast('偏好已保存。按自己的节奏来。');};
 $('#export').onclick=async()=>{try{const data=structuredClone(state);data.active=checkpoint(data.active,Date.now(),true);if(window.desktop){if(await window.desktop.export(data))toast('备份已导出。');}else{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`一隅备份-${dayKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('备份已导出。');}}catch(e){toast('导出失败：'+e.message);}};
 $('#import').onclick=()=>{if(state.active){toast('请先结束当前计时，再恢复备份。');return;}$('#import-file').click();};
@@ -235,15 +245,15 @@ $('#week-plan-form').onsubmit=e=>{e.preventDefault();if(state.active){toast('先
 
 function publishMini(){if(!window.desktop?.publishMini)return;const a=state.active,data={text:$('#timer').textContent,title:a?.title||$('#intention').value.trim()||'先在专注空间选择一个小目标',course:a?courseOf(a):$('#focus-course').value.trim(),running:!!a?.running,active:!!a,waiting:!!a?.waiting};const key=JSON.stringify(data);if(key!==lastMini){lastMini=key;window.desktop.publishMini(data);}}
 function softReached(){state.active=reachGoal(state.active);persist();render();notify('计时到了。可以读完这一段、延长 5 分钟，或现在结束。');}
-function continueFocus(paragraph=false){try{state.active=extendFocus(state.active,paragraph?30:5,paragraph);persist();render();}catch(error){toast(error.message);}}
-function renderHabitContext(){const course=state.active?.kind==='focus'?courseOf(state.active):$('#focus-course').value.trim(),habit=state.courseHabits?.find(h=>h.course===course);$('#course-position').textContent=habit?.position?'上次学到：'+habit.position:'';$('#open-material').hidden=!habit?.material;}
+function continueFocus(paragraph=false){if(state.active?.handoffId)return;try{state.active=extendFocus(state.active,paragraph?30:5,paragraph);persist();render();}catch(error){toast(error.message);}}
+function renderHabitContext(){const course=state.active?.kind==='focus'?courseOf(state.active):$('#focus-course').value.trim(),habit=state.courseHabits?.find(h=>h.course===course);$('#course-position').textContent=(state.active?.position||habit?.position)?'上次学到：'+(state.active?.position||habit.position):'';$('#open-material').hidden=!habit?.material;}
 function applyHabit(){renderHabitContext();if(state.active)return;const habit=state.courseHabits?.find(h=>h.course===$('#focus-course').value.trim());if(habit){duration=habit.minutes;$('#custom-minutes').value='';renderTimer();}}
 function openHabit(){const course=$('#focus-course').value.trim(),habit=state.courseHabits?.find(h=>h.course===course);$('#habit-course').value=course;$('#habit-minutes').value=habit?.minutes||state.profile.duration;$('#habit-material').value=habit?.material||'';$('#habit-position').value=habit?.position||'';$('#habit-dialog').showModal();}
 function readQuantity(targetId,unitId,actualId){const raw=$('#'+targetId).value,actual=actualId?$('#'+actualId).value:'';if(!raw){if(actual)throw Error('先填写目标数量和单位，再记录实际完成量。');return undefined;}const quantity={target:Number(raw),unit:$('#'+unitId).value.trim(),...(actual!==''?{actual:Number(actual)}:{})};if(!validQuantity(quantity))throw Error('请输入有效的学习量和单位（数量最多 100 万，实际完成可为 0）。');return quantity;}
 $('#edit-quantity').onclick=()=>{const q=state.draft?.quantity;$('#focus-amount').value=q?.target??'';$('#focus-unit').value=q?.unit||'页';$('#quantity-dialog').showModal();};
 $('#quantity-form').onsubmit=async e=>{e.preventDefault();if(state.active)return;try{const quantity=readQuantity('focus-amount','focus-unit'),before=structuredClone(state.draft);state.draft={...state.draft,title:$('#intention').value.trim(),course:$('#focus-course').value.trim(),edited:true};if(quantity)state.draft.quantity=quantity;else delete state.draft.quantity;try{await save();}catch(error){state.draft=before;throw error;}$('#quantity-dialog').close();render();}catch(error){toast(error.message);}};
 function renderTrash(){const rows=(state.trash||[]).filter(t=>Date.now()-t.deleted<30*86400000).sort((a,b)=>b.deleted-a.deleted);$('#recycle-bin').innerHTML=rows.length?rows.map(t=>`<div class="backup-row"><div><strong>${escape(t.record.title||t.record.text)}</strong><small>${({tasks:'目标',thoughts:'念头',sessions:'专注记录',events:'日历安排',focusPresets:'常用专注事件'})[t.kind]} · ${formatDate(t.deleted)}</small></div><button class="secondary" data-recover="${escape(t.id)}">恢复</button></div>`).join(''):'<p class="muted">暂时没有删除的内容。</p>';}
-async function recordAction(e){const el=e.target.closest('button');if(!el)return;const session=state.sessions.find(s=>s.id===(el.dataset.editNote||el.dataset.resolveQuestion||el.dataset.deleteSession));if(!session)return;if(el.dataset.editNote)openReview(session,true);else if(el.dataset.resolveQuestion){session.questionResolved=!session.questionResolved;await persist();render();}else if(await confirmAction('把这段记录移入回收站？','统计会随之更新，30 天内可以在偏好设置恢复。')){recycle(state,'sessions',session.id);await persist();render();}}
+async function recordAction(e){const el=e.target.closest('button');if(!el)return;const session=state.sessions.find(s=>s.id===(el.dataset.editTime||el.dataset.editNote||el.dataset.resolveQuestion||el.dataset.deleteSession));if(!session)return;if(el.dataset.editTime)recordsEditor.open(session);else if(el.dataset.editNote)openReview(session,true);else if(el.dataset.resolveQuestion){session.questionResolved=!session.questionResolved;await persist();render();}else if(await confirmAction('把这段记录移入回收站？','统计会随之更新，30 天内可以在偏好设置恢复。')){recycle(state,'sessions',session.id);await persist();render();}}
 async function refreshBackups(){if(!window.desktop?.backups){$('#automatic-backups').innerHTML='<p class="muted">自动备份在 Windows 桌面版可用。</p>';$('#backup-now').disabled=true;return;}try{const rows=await window.desktop.backups();$('#automatic-backups').innerHTML=rows.length?rows.map(row=>`<div class="backup-row"><div><strong>${row.invalid?'无法读取的备份':escape(formatDate(row.created))}</strong><small>${row.invalid?'未用于恢复，原文件保留':escape(row.reason)+' · '+row.sessions+' 次专注'}</small></div><button class="secondary" data-restore-backup="${escape(row.id)}" ${row.invalid?'disabled':''}>恢复此版本</button></div>`).join(''):'<p class="muted">开始使用后会自动保存备份。</p>';}catch(error){$('#automatic-backups').textContent='备份暂时无法读取：'+error.message;}}
 async function loadDesktopPreferences(){if(!window.desktop?.preferences){$('#desktop-preferences').querySelectorAll('input,select,button').forEach(el=>el.disabled=true);return;}const pref=await window.desktop.preferences();$('#capture-shortcut').value=pref.capture;$('#floating-shortcut').value=pref.floating;$('#quick-shortcut').value=pref.quick||'Control+Alt+Q';$('#mini-on-start').checked=pref.showOnStart;const busy=['capture','floating','quick'].filter(key=>pref[key]!=='off'&&!pref.registrations[key]);$('#shortcut-status').textContent=busy.length?'部分快捷键已被其他程序使用，请换一组。':'快捷键已生效。记完念头会返回原来的学习窗口。';}
 $('#test-capture').onclick=()=>window.desktop?.capture();
@@ -271,8 +281,8 @@ async function init(){
   if(!loadFailed){try{syncUI=await setupSync({getState:()=>state,applyState:next=>{state=next;if(!state.active)duration=state.profile.duration;if(page==='settings'){renderTimer();renderToday();}else{render();if(!state.active)applyHabit();}},saveLocal,confirmAction,toast});}catch(e){$('#sync-description').textContent='账号同步暂不可用：'+e.message+'；本地专注不受影响。';}}
   setInterval(()=>{
     if(state.active?.running){if(elapsed(state.active)>=state.active.duration*60000){if(state.active.kind==='break')finish();else softReached();return;}if(Date.now()-lastSaved>5000){state.active=checkpoint(state.active);persist();lastSaved=Date.now();}}
-    renderTimer();renderToday();quickFocus.updateBusy();reminders.tick();if(page==='calendar')calendar.refresh();
+    renderTimer();renderToday();quickFocus.updateBusy();relay.tick();reminders.tick();if(page==='calendar')calendar.refresh();
   },500);
-  if(!loadFailed){reminders.schedule();refreshPresetShortcuts();}window.mobileLaunch=async()=>{const launch=await window.desktop?.takeLaunch?.();if(!launch)return;if(launch.type==='preset'){const preset=(state.focusPresets||[]).find(p=>p.id===launch.id);if(preset)startPreset(preset);else toast('这个常用事件已删除，请重新添加桌面入口。');}else if(launch.type==='event'){navigate('calendar');calendar.show(launch.id);}};await window.mobileLaunch();
+  if(!loadFailed){reminders.schedule();refreshPresetShortcuts();setTimeout(()=>relay.refresh(),4000);}window.mobileLaunch=async()=>{const launch=await window.desktop?.takeLaunch?.();if(!launch)return;if(launch.type==='preset'){const preset=(state.focusPresets||[]).find(p=>p.id===launch.id);if(preset)startPreset(preset);else toast('这个常用事件已删除，请重新添加桌面入口。');}else if(launch.type==='event'){navigate('calendar');calendar.show(launch.id);}};await window.mobileLaunch();
 }
 init();

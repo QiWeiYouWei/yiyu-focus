@@ -1,3 +1,4 @@
+import {sessionParts} from './time-records.mjs';
 import {dayKey} from './core.mjs';
 export const courseOf = record => (record.course || '').trim();
 export const courseLabel = course => course || '未分类';
@@ -26,12 +27,12 @@ export function resumeTarget(state) {
 }
 export function weeklyReview(state, now=Date.now(), course=null) {
   const end=new Date(now),start=new Date(now);start.setHours(0,0,0,0);start.setDate(start.getDate()-6);
-  const sessions=filterSessions(state.sessions,course).filter(s=>s.ended>=start.getTime()&&s.ended<=now).sort((a,b)=>b.ended-a.ended);
+  const inRange=p=>p.day>=dayKey(start)&&p.day<=dayKey(end);const sessions=filterSessions(state.sessions,course).filter(s=>s.ended<=now&&sessionParts(s).some(inRange)).sort((a,b)=>b.ended-a.ended);
   const thoughts=state.thoughts.filter(t=>t.source==='focus'&&t.created>=start.getTime()&&t.created<=now&&(course===null||courseOf(t)===course));
   const groups=new Map();
   for(const t of thoughts){const text=t.text.trim().replace(/\s+/g,' '),key=text.toLocaleLowerCase();const row=groups.get(key)||{text,count:0,latest:0};row.count++;row.latest=Math.max(row.latest,t.created);groups.set(key,row);}
   const activities=new Map();
-  for(const s of sessions){const key=JSON.stringify([courseOf(s),s.title]);const row=activities.get(key)||{title:s.title,course:courseOf(s),seconds:0,count:0};row.seconds+=s.seconds;row.count++;activities.set(key,row);}
-  return {start:dayKey(start),end:dayKey(end),sessions,seconds:sessions.reduce((sum,s)=>sum+s.seconds,0),days:new Set(sessions.filter(s=>s.seconds>0).map(s=>s.day)).size,
+  for(const s of sessions){const key=JSON.stringify([courseOf(s),s.title]);const row=activities.get(key)||{title:s.title,course:courseOf(s),seconds:0,count:0};row.seconds+=sessionParts(s).filter(inRange).reduce((n,p)=>n+p.seconds,0);row.count++;activities.set(key,row);}
+  return {start:dayKey(start),end:dayKey(end),sessions,seconds:sessions.reduce((sum,s)=>sum+sessionParts(s).filter(inRange).reduce((n,p)=>n+p.seconds,0),0),days:new Set(sessions.flatMap(s=>sessionParts(s).filter(p=>inRange(p)&&p.seconds>0).map(p=>p.day))).size,
     activities:[...activities.values()],notes:sessions.filter(s=>s.note.trim()),thoughtCount:thoughts.length,thoughts:[...groups.values()].sort((a,b)=>b.count-a.count||b.latest-a.latest)};
 }

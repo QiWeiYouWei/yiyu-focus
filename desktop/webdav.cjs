@@ -31,7 +31,7 @@ class Nutstore {
     this.authorization='Basic '+Buffer.from(this.username+':'+password,'utf8').toString('base64');this.fetcher=fetcher;this.cache=new Map();this.versions=new Map();this.listed=false;
   }
   async request(name,method,body,extra={}){
-    if(name&&!filename.test(name))throw Error('无效的同步文件名');
+    if(name&&name!=='handoff.json'&&!filename.test(name))throw Error('无效的同步文件名');
     let response;
     try{response=await this.fetcher(BASE+name,{method,headers:{Authorization:this.authorization,...extra},body,redirect:'error',signal:AbortSignal.timeout(15000)});}
     catch{throw Error('暂时连接不到坚果云。记录仍在本机，联网后会重试。');}
@@ -43,6 +43,21 @@ class Nutstore {
     try{while(true){const {done,value}=await reader.read();if(done)break;total+=value.length;if(total>MAX_BYTES)throw Error('云端文件过大，已停止读取');chunks.push(Buffer.from(value));}}
     finally{await reader.cancel().catch(()=>{});}
     return Buffer.concat(chunks).toString('utf8');
+  }
+  async relayRead(validateRelay){
+    const response=await this.request('handoff.json','GET');
+    if(response.status===404){await response.body?.cancel();this.relayCache={etag:null,doc:null};return {owner:this.owner,etag:null,doc:null};}
+    if(response.status!==200){await response.body?.cancel();throw Error(friendlyStatus(response.status));}
+    const etag=response.headers.get('etag');if(!etag){await response.body?.cancel();throw Error('接力缺少版本标识，已停止交接');}
+    const doc=validateRelay(JSON.parse(await this.body(response)));if(doc.owner!==this.owner)throw Error('接力账号不同');
+    this.relayCache={etag,doc:structuredClone(doc)};return {owner:this.owner,etag,doc};
+  }
+  async relayWrite(device,{owner,etag,doc},validateRelay,transition){
+    if(owner!==this.owner||doc.owner!==owner||!this.relayCache||this.relayCache.etag!==etag||etag!==null&&(typeof etag!=='string'||etag.length>200||/[\r\n]/.test(etag)))throw Error('请先刷新接力，账号或版本已变化');
+    validateRelay(doc);transition(this.relayCache.doc,doc,device);const body=JSON.stringify(doc);if(Buffer.byteLength(body)>1024*1024)throw Error('接力内容过大，请先完成或撤回现有接力');
+    const response=await this.request('handoff.json','PUT',body,{'Content-Type':'application/json; charset=utf-8',...(etag?{'If-Match':etag}:{'If-None-Match':'*'})});
+    if(![200,201,204].includes(response.status)){await response.body?.cancel();throw Error(friendlyStatus(response.status));}
+    await response.body?.cancel();this.relayCache=null;return true;
   }
   async connect(){
     const response=await this.request('','MKCOL');if(![201,405].includes(response.status))throw Error(friendlyStatus(response.status));

@@ -23,9 +23,10 @@ else {
     diagnostic('ready',{version:app.getVersion(),hardwareAcceleration:app.isHardwareAccelerationEnabled()});
     const { validateState } = await import('../web/core.mjs');
     const { validatePacket } = await import('../web/sync.mjs');
-    await require('./sync-service.cjs').installSync({ipcMain,safeStorage,userData:app.getPath('userData'),validatePacket});
-    const store=new (require('./data-store.cjs').DataStore)(app.getPath('userData'),validateState);
+    const {validateRelay,relayTransition}=await import('../web/relay.mjs');
     const onlyMain=e=>{if(e.sender!==win?.webContents)throw Error('窗口无权访问');};
+    await require('./sync-service.cjs').installSync({ipcMain,safeStorage,userData:app.getPath('userData'),validatePacket,validateRelay,relayTransition,onlyMain});
+    const store=new (require('./data-store.cjs').DataStore)(app.getPath('userData'),validateState);
     ipcMain.handle('data:load',e=>{onlyMain(e);return store.load();});
     ipcMain.handle('data:save',(e,data)=>{onlyMain(e);return store.save(data);});
     ipcMain.handle('data:restore',(e,data)=>{onlyMain(e);return store.restore(data);});

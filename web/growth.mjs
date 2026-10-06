@@ -1,20 +1,20 @@
+import {sessionParts} from './time-records.mjs';
 import {dayKey} from './core.mjs';
 import {courseOf,courseLabel,filterSessions} from './learning.mjs';
 import {distractionReasons} from './journey.mjs';
 
-// Calendar days use local midnight; timer records belong to their end date.
+// New timer intervals are allocated to actual local calendar days; legacy records retain their end day.
 export function growthAnalysis(state,{now=Date.now(),period=30,course=null}={}){
   period=[7,30,90].includes(Number(period))?Number(period):30;
   const today=new Date(now);today.setHours(0,0,0,0);
   const dates=Array.from({length:period},(_,i)=>{const d=new Date(today);d.setDate(d.getDate()-period+1+i);return d;});
   const start=dates[0].getTime(),days=dates.map(d=>({day:dayKey(d),seconds:0,count:0})),byDay=new Map(days.map(d=>[d.day,d]));
-  const sessions=filterSessions(state.sessions,course).filter(s=>s.ended>=start&&s.ended<=now);
+  const sessions=filterSessions(state.sessions,course).filter(s=>s.ended<=now&&sessionParts(s).some(p=>byDay.has(p.day)));
   const courses=new Map(),units=new Map();
   for(const s of sessions){
-    const day=byDay.get(dayKey(s.ended));if(!day)continue;
-    day.seconds+=s.seconds;day.count++;
-    const key=courseOf(s),c=courses.get(key)||{course:key,label:courseLabel(key),seconds:0,count:0};c.seconds+=s.seconds;c.count++;courses.set(key,c);
-    const q=s.quantity;if(!q)continue;
+    const portions=sessionParts(s).filter(p=>byDay.has(p.day)),seconds=portions.reduce((n,p)=>n+p.seconds,0);for(const p of portions){const d=byDay.get(p.day);d.seconds+=p.seconds;d.count++;}const day=byDay.get(dayKey(s.ended));
+    const key=courseOf(s),c=courses.get(key)||{course:key,label:courseLabel(key),seconds:0,count:0};c.seconds+=seconds;c.count++;courses.set(key,c);
+    const q=s.quantity;if(!q||!day)continue;
     const u=units.get(q.unit)||{unit:q.unit,target:0,actual:0,recorded:0,missing:0,days:days.map(d=>({day:d.day,target:0,actual:0,count:0}))};
     if(q.actual===undefined){u.missing++;}else{u.recorded++;u.target+=q.target;u.actual+=q.actual;const d=u.days[days.indexOf(day)];d.target+=q.target;d.actual+=q.actual;d.count++;}units.set(q.unit,u);
   }

@@ -70,6 +70,8 @@ public final class MainActivity extends ComponentActivity {
    case "sync:status":return status();
    case "sync:connect":JSONObject value=(JSONObject)args;Nutstore next=new Nutstore(value);next.connect();credentials.save(new JSONObject().put("username",next.username).put("password",value.getString("password")));client=next;startupError="";return status();
    case "sync:disconnect":credentials.clear();client=null;startupError="";return status();
+   case "sync:relay-read":if(client==null)throw new IOException("请先连接坚果云");return client.relayRead();
+   case "sync:relay-write":if(client==null||!client.owner.equals(((JSONObject)args).optString("owner")))throw new IOException("接力账号已变化");return client.relayWrite(device,(JSONObject)args);
    case "sync:read":if(client==null)throw new IOException("请先连接坚果云");return new JSONObject().put("owner",client.owner).put("packets",client.read());
    case "sync:write":if(client==null||!client.owner.equals(((JSONObject)args).optString("owner")))throw new IOException("同步账号发生变化，已停止上传");return client.write(device,((JSONObject)args).getJSONObject("packet"));
    default:throw new IOException("此操作在手机端不可用");

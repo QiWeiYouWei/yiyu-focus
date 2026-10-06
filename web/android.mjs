@@ -1,4 +1,5 @@
 import {validateState} from './core.mjs';
+import {validateRelay} from './relay.mjs';
 import {validatePacket} from './sync.mjs';
 if(globalThis.YiyuAndroid){
  const pending=new Map();let next=0;
@@ -9,6 +10,7 @@ if(globalThis.YiyuAndroid){
   load:async()=>{const data=await invoke('data:load');return data?validateState(data):null;},save:data=>invoke('data:save',validateState(data)),restore:data=>invoke('data:restore',validateState(data)),
   backups:()=>invoke('backup:list'),readBackup:async id=>validateState(await invoke('backup:read',id)),backupNow:data=>invoke('backup:now',validateState(data)),export:data=>invoke('backup:export',validateState(data)),
   chooseMaterial:()=>invoke('material:choose'),openMaterial:location=>invoke('material:open',location),notify:text=>invoke('notify',text),
+  relayRead:async()=>{const r=await invoke('sync:relay-read');if(r.doc)validateRelay(r.doc);return r;},relayWrite:data=>invoke('sync:relay-write',{...data,doc:validateRelay(data.doc)}),
   syncStatus:()=>invoke('sync:status'),syncConnect:data=>invoke('sync:connect',data),syncDisconnect:()=>invoke('sync:disconnect'),syncRead:async()=>{const result=await invoke('sync:read');result.packets.forEach(validatePacket);return result;},syncWrite:data=>invoke('sync:write',{owner:data.owner,packet:validatePacket(data.packet)})
  };
  document.documentElement.dataset.platform='android';

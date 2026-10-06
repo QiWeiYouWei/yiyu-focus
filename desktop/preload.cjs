@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('desktop', {
   syncStatus:()=>ipcRenderer.invoke('sync:status'),
   syncConnect:credentials=>ipcRenderer.invoke('sync:connect',credentials),
   syncDisconnect:()=>ipcRenderer.invoke('sync:disconnect'),
+  relayRead:()=>ipcRenderer.invoke('sync:relay-read'),
+  relayWrite:data=>ipcRenderer.invoke('sync:relay-write',data),
   syncRead:()=>ipcRenderer.invoke('sync:read'),
   syncWrite:data=>ipcRenderer.invoke('sync:write',data),
   onPause:callback=>ipcRenderer.on('system:pause',()=>callback())
