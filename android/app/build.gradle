@@ -1,11 +1,11 @@
 plugins { id 'com.android.application' }
 def signingFile = rootProject.file('signing.properties')
 def signingValues = new Properties()
-if (signingFile.exists()) signingFile.withInputStream { signingValues.load(it) }
+if (signingFile.exists()) signingFile.withReader('UTF-8') { signingValues.load(it) }
 android {
  namespace 'local.yiyu.focus'
  compileSdk 36
- defaultConfig { applicationId 'local.yiyu.focus'; minSdk 26; targetSdk 36; versionCode 1200; versionName '0.12.0'; testInstrumentationRunner 'local.yiyu.focus.NativeChecks' }
+ defaultConfig { applicationId 'local.yiyu.focus'; minSdk 26; targetSdk 36; versionCode 1900; versionName '0.19.0'; testInstrumentationRunner 'local.yiyu.focus.NativeChecks' }
  buildFeatures { buildConfig true }
  compileOptions { coreLibraryDesugaringEnabled true; sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
  signingConfigs { release { if(signingFile.exists()) { storeFile file(signingValues.storeFile); storePassword signingValues.storePassword; keyAlias signingValues.keyAlias; keyPassword signingValues.keyPassword } } }

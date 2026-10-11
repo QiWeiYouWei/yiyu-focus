@@ -1,0 +1,18 @@
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#413b4d;user-select:none}
+main{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px 8px 0}
+button{font:inherit;cursor:pointer}button:focus-visible{outline:2px solid #9479b3;outline-offset:2px}
+.toolbar{display:flex;flex-shrink:0;align-items:center;justify-content:space-between;width:95%;height:26px;font-size:11px;-webkit-app-region:no-drag}
+.toolbar button{border:1px solid rgba(220,212,233,.6);background:rgba(250,248,255,.92);color:#65557b;border-radius:50%;width:24px;height:24px;font-size:18px}
+.toolbar #pet-chat{flex:1;min-width:0;font-size:11px;width:auto;border-radius:20px;padding:0 4px;margin:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.toolbar button{flex-shrink:0}.toolbar #pet-gaze{margin-right:4px;display:grid;place-items:center}.toolbar #pet-gaze svg{fill:none;stroke:currentColor;stroke-width:1.6}.toolbar #pet-gaze[aria-pressed=true]{background:#e8dcf4;color:#694987}.toolbar #pet-gaze[aria-pressed=false]{color:#a49aaf;background:#faf8ff}
+.message{flex-shrink:0;width:100%;min-height:40px;margin-top:4px;text-align:center;padding:6px 10px;border:1px solid rgba(220,212,233,.6);border-radius:15px;background:rgba(250,248,255,.94);font-size:12px;line-height:1.6;box-shadow:0 2px 12px rgba(70,40,85,.06);-webkit-app-region:drag}
+.message small{display:block;font-size:10px;color:#93879e;white-space:nowrap}.message small:empty{display:none}
+.pet-stage{position:relative;flex:1;min-height:0;width:100%;display:flex;justify-content:center;align-items:flex-end;-webkit-app-region:drag;cursor:grab}
+.pet-stage canvas{display:block;max-width:100%;height:100%;width:auto;aspect-ratio:192/208;image-rendering:auto;pointer-events:none}
+#pet-touch{position:absolute;top:7%;left:30%;width:40%;height:31%;border:0;border-radius:50%;background:transparent;-webkit-app-region:no-drag;cursor:pointer}
+#pet-touch:hover{background:radial-gradient(ellipse,rgba(215,186,242,.18),transparent 70%)}
+.chat-menu{position:absolute;top:36px;left:8px;right:8px;padding:10px;border:1px solid #ded2e9;border-radius:15px;background:rgba(253,250,255,.98);box-shadow:0 8px 26px rgba(54,32,74,.16);z-index:2;-webkit-app-region:no-drag;font-size:12px}
+.chat-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:11px;color:#82718d}.chat-heading button{border:0;background:transparent;color:#82718d;font-size:18px}
+.chat-menu>button{display:block;width:100%;padding:9px 6px;text-align:left;border:0;background:#f1eaf7;border-radius:9px;margin-top:6px;color:#65527a;font-size:12px}.chat-menu>button:hover{background:#e9ddf3}.chat-menu small{display:block;font-size:10px;line-height:1.6;color:#93879e;margin-top:9px}
+.goodbye{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-shrink:0;width:100%;padding:3px 4px 7px;font-size:10px;color:#82718d;-webkit-app-region:no-drag}.goodbye button{padding:4px 7px;border:1px solid #ded2e9;border-radius:10px;background:#faf8ff;color:#65527a;font-size:10px}button:disabled{cursor:default;opacity:.6}
+body[data-mode=rest] .pet-stage,body[data-mode=paused] .pet-stage{filter:saturate(.82)}body[data-motion=on][data-mode=rest] canvas{animation:breathe 5s ease-in-out infinite;transform-origin:50% 100%}
+#pet-error{position:absolute;bottom:18px;font-size:11px;background:#fff5ee;padding:8px;border-radius:8px}@keyframes breathe{50%{transform:scale(.99,1.015)}}@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}[hidden]{display:none!important}

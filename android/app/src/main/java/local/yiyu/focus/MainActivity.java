@@ -35,7 +35,13 @@ public final class MainActivity extends ComponentActivity {
    @Override public void onPageFinished(WebView view,String url){loaded=isHome(Uri.parse(url));}
    @Override public boolean onRenderProcessGone(WebView view,RenderProcessGoneDetail detail){view.destroy();new AlertDialog.Builder(MainActivity.this).setTitle("专注窗口需要重新打开").setMessage("最近的本机记录已保留，请重新打开一隅。").setPositiveButton("关闭",(d,w)->finish()).show();return true;}
   });
-  web.setWebChromeClient(new WebChromeClient(){@Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){if(fileCallback!=null)fileCallback.onReceiveValue(null);fileCallback=callback;Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("application/json").addCategory(Intent.CATEGORY_OPENABLE);try{startActivityForResult(i,31);}catch(Exception e){fileCallback.onReceiveValue(null);fileCallback=null;}return true;}});
+  web.setWebChromeClient(new WebChromeClient(){@Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){
+   if(fileCallback!=null)fileCallback.onReceiveValue(null);fileCallback=callback;
+   boolean image=false;for(String type:params.getAcceptTypes())if(type!=null&&type.startsWith("image/"))image=true;
+   Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(image?"image/*":"application/json");
+   if(image)i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"image/jpeg","image/png","image/webp"});
+   try{startActivityForResult(i,31);}catch(Exception e){fileCallback.onReceiveValue(null);fileCallback=null;}return true;
+  }});
   getOnBackPressedDispatcher().addCallback(this,new OnBackPressedCallback(true){@Override public void handleOnBackPressed(){handleBack();}});
   web.loadUrl(HOME);
  }

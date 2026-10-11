@@ -1,0 +1,33 @@
+{
+  "name": "Luna",
+  "description": "White-haired dragon girl with violet eyes, lavender wings and an ivory dress.",
+  "source": "User-provided Luna-v2, edge-matting-repair revision",
+  "sha256": "819a7c8478582f3849507c26ed0381b51cef2bbfb2a5a412f560d794edcf39fd",
+  "spriteVersion": 2,
+  "columns": 8,
+  "rows": 11,
+  "frameWidth": 192,
+  "frameHeight": 208,
+  "states": {
+    "idle": 0,
+    "working": 7,
+    "review": 8,
+    "waving": 3,
+    "jumping": 4,
+    "sleepy": 5,
+    "affection": 6
+  },
+  "restFrame": {
+    "row": 0,
+    "column": 1
+  },
+  "gaze": {
+    "order": "clockwise",
+    "rows": [
+      9,
+      10
+    ],
+    "firstDirection": "north",
+    "directions": 16
+  }
+}

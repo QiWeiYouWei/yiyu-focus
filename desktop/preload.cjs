@@ -1,5 +1,13 @@
 const {contextBridge,ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('desktop', {
+  close:()=>ipcRenderer.send('window:close'),
+  petPreferences:()=>ipcRenderer.invoke('pet:preferences'),
+  savePetPreferences:value=>ipcRenderer.invoke('pet:preferences-save',value),
+  resetPetPosition:()=>ipcRenderer.invoke('pet:reset'),
+  publishPet:value=>ipcRenderer.send('pet:publish',value),
+  celebratePet:id=>ipcRenderer.send('pet:celebrate',id),
+  encouragePet:value=>ipcRenderer.send('pet:encourage',value),
+  onPetPreferences:callback=>ipcRenderer.on('pet:preferences-changed',(_event,value)=>callback(value)),
   calendarSchedule:events=>ipcRenderer.invoke('calendar:schedule',events),
   calendarSnooze:id=>ipcRenderer.invoke('calendar:snooze',id),
   onReminder:callback=>ipcRenderer.on('calendar:reminder',(_e,id)=>callback(id)),

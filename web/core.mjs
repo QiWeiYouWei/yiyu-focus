@@ -1,5 +1,6 @@
 import {sessionParts,validParts,validSegments} from './time-records.mjs';
 import {dayKey,validQuantity,validEvent,validPreset} from './planning.mjs';
+import {validTrack,validateCourseOrganization} from './courses.mjs';
 export {dayKey} from './planning.mjs';
 export const defaultState = () => ({ version: 1, profile: { name: '学习中的你', motto: '慢慢来，每一次回来都算数。', goal: 60, duration: 15, breakMinutes: 5, sound: true }, tasks: [], sessions: [], thoughts: [], active: null, draft: {title: '', course: ''}, courseHabits: [], events: [], focusPresets: [], trash: [] });
 export function elapsed(active, now = Date.now()) {
@@ -35,7 +36,7 @@ export function validateState(s) {
   const str = (v,max=2000) => typeof v === 'string' && v.length <= max;
   if (!s || s.version !== 1 || !s.profile || !['tasks','sessions','thoughts'].every(k=>Array.isArray(s[k]) && s[k].length <= 100000)) throw Error('不是有效的一隅备份文件');
   const optional=(value,max)=>value===undefined||str(value,max);
-  const extra=r=>validQuantity(r.quantity)&&optional(r.course,40)&&optional(r.nextStep,200)&&optional(r.question,1000)&&optional(r.position,200)&&optional(r.eventId,100)&&optional(r.presetId,100)&&(r.reason===undefined||['thought','phone','difficult','tired','environment','other'].includes(r.reason))&&(r.questionResolved===undefined||typeof r.questionResolved==='boolean');
+  const extra=r=>validQuantity(r.quantity)&&optional(r.course,40)&&optional(r.nextStep,200)&&optional(r.question,1000)&&optional(r.position,200)&&optional(r.eventId,100)&&optional(r.presetId,100)&&optional(r.courseTrackId,100)&&optional(r.topicId,100)&&(r.reason===undefined||['thought','phone','difficult','tired','environment','other'].includes(r.reason))&&(r.questionResolved===undefined||typeof r.questionResolved==='boolean');
   if(s.draft!==undefined&&(!s.draft||!validQuantity(s.draft.quantity)||!str(s.draft.title,200)||!str(s.draft.course,40)||!optional(s.draft.sessionId,100)||!optional(s.draft.eventId,100)||!optional(s.draft.presetId,100)||(s.draft.edited!==undefined&&typeof s.draft.edited!=='boolean')))throw Error('下一步目标格式有误');
   const p=s.profile;
   if (!str(p.name,40) || !str(p.motto,120) || !finite(p.goal,5,720) || !finite(p.duration,1,120) || !finite(p.breakMinutes,1,30) || typeof p.sound !== 'boolean') throw Error('个人设置格式有误');
@@ -52,6 +53,10 @@ export function validateState(s) {
   for(const record of s.sessions)if(record.original!==undefined){const o=record.original;if(!o||!finite(o.seconds,0,7200)||!finite(o.ended,0,1e14)||o.day!==dayKey(o.ended)||!validParts(o))throw Error('原始专注记录格式有误');}
   if(s.handoffPending!==undefined){const t=s.handoffPending;if(!t||!str(t.id,100)||t.status!=='offered'||!str(t.from,100)||!str(t.label,40)||!str(t.position,200)||!finite(t.created,0,1e14)||t.active?.kind!=='focus'||t.active.running||t.active.handoffId||s.active?.handoffId!==t.id||s.active.id!==t.active.id)throw Error('待交接凭据格式有误');validateState({...defaultState(),active:t.active});}
   if(s.courseHabits!==undefined&&(!Array.isArray(s.courseHabits)||s.courseHabits.length>2000||!s.courseHabits.every(h=>h&&str(h.id,100)&&str(h.course,40)&&h.course.trim()&&finite(h.minutes,1,120)&&str(h.material,2000)&&str(h.position,200)&&finite(h.updated,0,1e14))))throw Error('课程学习习惯格式有误');
+  if(s.courseTracks!==undefined&&(!Array.isArray(s.courseTracks)||s.courseTracks.length>200||!s.courseTracks.every(validTrack)||new Set(s.courseTracks.map(c=>c.id)).size!==s.courseTracks.length))throw Error('课程追赶目录格式有误');
+  validateCourseOrganization(s);
+  if(s.catchupBudget!==undefined&&(!Number.isInteger(s.catchupBudget)||!finite(s.catchupBudget,5,240)))throw Error('课程追赶预算格式有误');
+  if(s.courseOrder!==undefined&&!['priority','name','created'].includes(s.courseOrder))throw Error('课程排列方式格式有误');
   if(s.events!==undefined&&(!Array.isArray(s.events)||s.events.length>100000||!s.events.every(validEvent)||new Set(s.events.map(e=>e.id)).size!==s.events.length))throw Error('日历安排格式有误');
   if(s.focusPresets!==undefined&&(!Array.isArray(s.focusPresets)||s.focusPresets.length>2000||!s.focusPresets.every(validPreset)||new Set(s.focusPresets.map(p=>p.id)).size!==s.focusPresets.length))throw Error('快速专注事件格式有误');
   if(s.trash!==undefined){if(!Array.isArray(s.trash)||s.trash.length>1000)throw Error('回收站格式有误');for(const item of s.trash){if(!item||!str(item.id,100)||!['tasks','sessions','thoughts','events','focusPresets'].includes(item.kind)||!finite(item.deleted,0,1e14))throw Error('回收站格式有误');validateState({...defaultState(),[item.kind]:[item.record]});}}

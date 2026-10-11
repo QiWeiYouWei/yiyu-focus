@@ -3,7 +3,7 @@ import {dayKey} from './core.mjs';
 export const courseOf = record => (record.course || '').trim();
 export const courseLabel = course => course || '未分类';
 export function courseNames(state) {
-  return [...new Set([...state.tasks,...state.sessions,...state.thoughts,...(state.events||[]),...(state.focusPresets||[]),...(state.courseHabits||[]),state.active,state.draft].filter(Boolean).map(courseOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-CN'));
+  return [...new Set([...state.tasks,...state.sessions,...state.thoughts,...(state.events||[]),...(state.focusPresets||[]),...(state.courseHabits||[]),...(state.courseTracks||[]),state.active,state.draft].filter(Boolean).map(courseOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-CN'));
 }
 export function filterSessions(sessions, course=null) {
   return course===null ? sessions : sessions.filter(s=>courseOf(s)===course);

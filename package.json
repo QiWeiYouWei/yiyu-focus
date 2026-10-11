@@ -1,6 +1,6 @@
 {
   "name": "yiyu-focus",
-  "version": "0.12.0",
+  "version": "0.19.0",
   "description": "一隅 Focus — 留一点时间给真正重要的事",
   "main": "desktop/main.cjs",
   "author": "Focus",
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "node scripts/serve.cjs",
-    "test": "node --test tests/core.test.mjs tests/learning.test.mjs tests/workflow.test.mjs tests/data-store.test.cjs tests/sync.test.mjs tests/webdav.test.cjs tests/planning.test.mjs tests/journey.test.mjs tests/growth.test.mjs tests/evolution.test.mjs",
+    "test": "node --test tests/core.test.mjs tests/learning.test.mjs tests/workflow.test.mjs tests/data-store.test.cjs tests/sync.test.mjs tests/webdav.test.cjs tests/planning.test.mjs tests/journey.test.mjs tests/growth.test.mjs tests/evolution.test.mjs tests/pet-animation.test.mjs tests/pet-gaze.test.mjs tests/luna-companion.test.mjs tests/courses.test.mjs",
     "test:sync-ui": "node tests/sync-ui.cjs",
     "test:ui": "node tests/ui.cjs",
     "test:desktop": "node tests/desktop.cjs",
@@ -31,7 +31,13 @@
     "test:growth": "node tests/growth-ui.cjs",
     "test:evolution": "node tests/evolution-ui.cjs",
     "test:relay": "node tests/relay-ui.cjs",
-    "test:android-evolution": "node tests/android-evolution.cjs"
+    "test:android-evolution": "node tests/android-evolution.cjs",
+    "test:pet": "node tests/pet.cjs",
+    "test:gaze": "node tests/gaze.cjs",
+    "test:luna-lifecycle": "node tests/luna-lifecycle.cjs",
+    "test:courses": "node tests/courses-ui.cjs",
+    "test:android-courses": "node tests/android-courses.cjs",
+    "test:android-upgrade": "node tests/android-upgrade.cjs"
   },
   "build": {
     "appId": "local.yiyu.focus",

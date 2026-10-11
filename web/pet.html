@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'"><title>Luna · 一隅陪伴</title><link rel="stylesheet" href="pet.css"></head>
+<body><main id="companion" aria-label="Luna 桌宠">
+ <div class="toolbar"><button id="pet-home" aria-label="返回一隅" title="返回一隅">↗</button><button id="pet-chat" aria-expanded="false" aria-controls="pet-chat-menu" title="和 Luna 说说">Luna · 聊聊</button><button id="pet-gaze" aria-pressed="true" aria-label="光标注视：已开启，点击关闭" title="光标注视：已开启，点击关闭"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button><button id="pet-hide" aria-label="隐藏桌宠" title="隐藏，随时可在一隅重新开启">×</button></div>
+ <div class="message"><span id="pet-status" role="status" aria-live="polite">陪你，从一小步开始</span><small id="pet-timer"></small></div>
+ <div class="pet-stage" title="拖动身体或气泡可以调整位置"><canvas id="pet-canvas" width="192" height="208" aria-label="Luna 待机"></canvas><button id="pet-touch" title="摸摸 Luna" aria-label="摸摸 Luna 的头"></button></div>
+ <div id="pet-goodbye" class="goodbye" hidden><span>即将关闭 · 下次见 ♡</span><button id="pet-goodbye-skip">立即关闭</button></div>
+ <div id="pet-chat-menu" class="chat-menu" hidden aria-label="和 Luna 聊聊"><div class="chat-heading">这一刻，你需要什么？<button id="pet-chat-close" aria-label="收起聊聊">×</button></div><button data-luna-reply="encourage">给我一点鼓励 ✧</button><button data-luna-reply="tired">我有点累，陪我缓缓</button><button data-luna-reply="stuck">进度落后，有点焦虑</button><small>计时由你决定，聊聊不会改动它。</small></div>
+ <span id="pet-error" hidden>桌宠素材暂时无法读取</span>
+</main><script type="module" src="pet.mjs"></script></body></html>

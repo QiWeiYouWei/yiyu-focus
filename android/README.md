@@ -1,10 +1,10 @@
-# 一隅 Focus 安卓 0.12.0
+# 一隅 Focus 安卓 0.19.0
 
 ## 安装与同步
 
-1. 将 release/Yiyu-Focus-0.12.0-Android.apk 传到手机安装，按系统提示允许此次安装。支持 Android 8.0 及以上。
+1. 将 release/Yiyu-Focus-0.19.0-Android.apk 传到手机安装，按系统提示允许此次安装。支持 Android 8.0 及以上。
 2. 先离线使用也可以。同步时点右上角“账号同步”，填写 Windows 端相同的坚果云邮箱和应用密码，再连接。不要填写坚果云网页登录密码。
-3. Windows 端建议同时升级到 0.12.0，以同步日历与学习量新字段。常用专注事件、日历安排、任务、完成记录、课程、收获、疑问及其解决状态、下一步、暂存念头与个人偏好共享；正在进行的计时、目标草稿、回收站和备份只在当前设备保存。
+3. Windows 端建议同时升级到 0.19.0，以同步日历与学习量新字段。常用专注事件、日历安排、任务、完成记录、课程、收获、疑问及其解决状态、下一步、暂存念头与个人偏好共享；正在进行的计时、目标草稿、回收站和备份只在当前设备保存。
 4. “课程学习习惯”中的网页可直接打开。Windows 文件路径在手机无效，请重新选择手机文件。手机通过系统文件选择器授权读取资料，不请求访问全部文件。
 5. “偏好设置”中开启通知和准时提醒。没有准时提醒授权也能计时，但后台通知可能延迟。部分手机需在系统设置允许一隅后台运行。
 
@@ -21,6 +21,12 @@
 安卓没有 Windows 的置顶小窗和全局快捷键。Android WebView 只加载随安装包提供的页面，网页资料打开到手机浏览器；不允许远程网页调用本机桥接接口。
 
 0.9.0 新增快速专注管理页：保存名称、图标、课程、固定时长和学习量目标，首页可直接开始。日历翻页与“今天”按钮统一高度；同时修复原生同步对日历类型的支持。与 Windows 0.9.0 使用同一账号同步新字段，请同时升级两端。0.9.0 当时的 DDL 仅为日历内倒计时；0.10.0 已新增后台日历通知。
+
+## 0.19.0 新增
+
+课程追赶、学校进度确认、自定义学期、课程图标、本机封面和重要 / 紧急程度与 Windows 保持一致。图片选择仅授权所选文件，不请求全部存储权限。课程目录、学期和封面暂不随账号同步，可导出 JSON 转移；专注记录仍按原协议同步。安卓不打包 Luna 素材，不显示桌宠控制，不增加悬浮权限。
+
+沿用原发布签名，直接覆盖安装保留本机记录，勿先卸载。中文项目路径也可构建。
 
 ## 0.12.0 新增
 
@@ -49,7 +55,7 @@ npm ci
 npm run android:build
 ~~~
 
-工具也会识别本项目 .android-tools/sdk。构建前自动复制 web/ 到 app/src/main/assets/web，使用 Gradle 8.13 和 Android Gradle Plugin 8.13.2。Windows 和安卓界面版本统一为 0.12.0。最终 APK 位于 release/。
+工具也会识别本项目 .android-tools/sdk。构建前自动复制 web/ 到 app/src/main/assets/web，使用 Gradle 8.13 和 Android Gradle Plugin 8.13.2。Windows 和安卓界面版本统一为 0.19.0。最终 APK 位于 release/。
 
 首次构建在 .android-signing/yiyu-release.jks 创建本地发布签名，密码保存在 android/signing.properties；两者已忽略，不应上传仓库。请安全备份这两个文件，后续覆盖安装必须保留同一签名；丢失密钥就无法正常升级现有安装。备份签名文件不等于导出用户学习数据。
 
@@ -78,3 +84,5 @@ test:android 会清除专用模拟器上 local.yiyu.focus 的测试数据。不�
 测试覆盖共享界面图标、原生持久化、后台计时、柔和收尾、疑问筛选、热力图、备份和回收、返回键及进程回收后的到点通知；原生检查覆盖损坏保护、30 份轮转、恢复前保护、Keystore、多设备协议、条件写入冲突和离线错误。最终发布 APK 另做签名校验和模拟器安装启动。正式包还验证了实际进程结束后的计时恢复、到点通知、同一次开机重复广播不会误暂停，以及通过开机次数变化模拟真实重启后的暂停。真实账号同步、各品牌手机后台策略仍需在实际手机验证。
 
 参考：[WebView 本地资源](https://developer.android.com/develop/ui/views/layout/webapps/load-local-content)、[后台闹钟](https://developer.android.com/develop/background-work/services/alarms)、[Android 15 停止状态](https://developer.android.com/about/versions/15/behavior-changes-all)、[准时提醒授权](https://developer.android.com/about/versions/14/changes/schedule-exact-alarms)。
+
+0.19.0 验证命令：`npm run test:android-courses` 检查真实系统图片选择、学期、课程优先级、掌握记录及 JSON 备份；`npm run test:android-upgrade` 在专用、可调试的模拟器上验证 0.12.0 正式版到新正式版的覆盖升级，需先运行安卓 UI 测试并启用该模拟器的 `adb root`。它会重装专用模拟器的测试应用，不可用于个人手机。

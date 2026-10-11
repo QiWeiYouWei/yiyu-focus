@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification, dialog, powerMonitor, safeStorage, globalShortcut, screen, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, dialog, powerMonitor, safeStorage, globalShortcut, screen, shell, nativeImage } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 let win, writeQueue = Promise.resolve();
@@ -25,6 +25,7 @@ else {
     const { validatePacket } = await import('../web/sync.mjs');
     const {validateRelay,relayTransition}=await import('../web/relay.mjs');
     const onlyMain=e=>{if(e.sender!==win?.webContents)throw Error('窗口无权访问');};
+    ipcMain.on('window:close',event=>{onlyMain(event);win.close();});
     await require('./sync-service.cjs').installSync({ipcMain,safeStorage,userData:app.getPath('userData'),validatePacket,validateRelay,relayTransition,onlyMain});
     const store=new (require('./data-store.cjs').DataStore)(app.getPath('userData'),validateState);
     ipcMain.handle('data:load',e=>{onlyMain(e);return store.load();});
@@ -43,22 +44,54 @@ else {
       if(result.canceled) return false;
       await fs.writeFile(result.filePath,JSON.stringify(data,null,2));return true;
     });
-    win = new BrowserWindow({width:1280,height:960,minWidth:800,minHeight:650,icon:path.join(__dirname,'../web/icon.png'),backgroundColor:'#f5f5f7',autoHideMenuBar:true,title:'一隅 Focus',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
+    let taskbarIconPath;
+    let windowIcon=nativeImage.createFromBuffer(await fs.readFile(path.join(__dirname,'../web/icon.png')));
+    if(process.platform==='win32'){
+      try{
+        // Explorer cannot read inside ASAR, and portable extraction paths change.
+        // A content-addressed file in userData stays valid when the EXE is moved.
+        const bytes=await fs.readFile(path.join(__dirname,'icon.ico'));
+        const digest=require('node:crypto').createHash('sha256').update(bytes).digest('hex').slice(0,16);
+        const folder=path.join(app.getPath('userData'),'icons');await fs.mkdir(folder,{recursive:true});
+        taskbarIconPath=path.join(folder,`yiyu-${digest}.ico`);
+        try{await fs.writeFile(taskbarIconPath,bytes,{flag:'wx'});}catch(error){if(error.code!=='EEXIST')throw error;}
+        const ico=nativeImage.createFromPath(taskbarIconPath);if(!ico.isEmpty())windowIcon=ico;
+      }catch(error){taskbarIconPath=undefined;diagnostic('taskbar-icon-error',{message:error.message});}
+    }
+    win = new BrowserWindow({width:1280,height:960,minWidth:800,minHeight:650,show:process.platform!=='win32',icon:windowIcon,backgroundColor:'#f5f5f7',autoHideMenuBar:true,title:'一隅 Focus',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
+    if(process.platform==='win32'){
+      // A portable build runs its inner EXE from a temporary extraction folder.
+      // Pinning must relaunch the outer EXE, while its icon uses a stable ICO.
+      const executable=app.isPackaged&&process.env.PORTABLE_EXECUTABLE_FILE
+        ?path.resolve(process.env.PORTABLE_EXECUTABLE_FILE):process.execPath;
+      try{
+        win.setAppDetails({
+          appId:'local.yiyu.focus',
+          ...(taskbarIconPath?{appIconPath:taskbarIconPath,appIconIndex:0}:{}),
+          relaunchCommand:app.isPackaged?`"${executable}"`:`"${executable}" "${app.getAppPath()}"`,
+          relaunchDisplayName:'一隅 Focus'
+        });
+      }catch(error){diagnostic('taskbar-details-error',{message:error.message});}
+    }
     win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
     win.webContents.on('will-navigate',e=>e.preventDefault());
     win.webContents.session.setPermissionRequestHandler((_w,_p,cb)=>cb(false));
+    const pet=await require('./pet.cjs').installPet({app,BrowserWindow,ipcMain,screen,win,onlyMain,diagnostic});
     const floating=await require('./floating.cjs').installFloating({app,BrowserWindow,ipcMain,globalShortcut,screen,win,userData:app.getPath('userData')});
-    await win.loadFile(path.join(__dirname,'../web/index.html'));
     const calendar=await require('./calendar-reminders.cjs').installCalendar({ipcMain,win,userData:app.getPath('userData'),Notification,load:()=>store.load()});
-    win.on('closed',()=>{floating.stop();calendar.stop();});
+    win.on('closed',()=>{pet.stop().catch(error=>diagnostic('pet-close-error',{message:error.message}));floating.stop();calendar.stop();});
     powerMonitor.on('suspend',()=>win?.webContents.send('system:pause'));
     powerMonitor.on('lock-screen',()=>win?.webContents.send('system:pause'));
-    let closing=false;
+    let closing=false,closePending=false;
     win.on('close',e=>{
       if(closing) return;
       e.preventDefault();
-      win.webContents.executeJavaScript('window.prepareToClose ? window.prepareToClose() : Promise.resolve()').then(async()=>{await store.queue;if(!store.failed){const latest=await store.load();if(latest)await store.backupNow(latest,'退出时备份');}closing=true;win.close();}).catch(()=>dialog.showMessageBox(win,{type:'error',message:'数据尚未保存，请稍后重试关闭。'}));
+      if(closePending){pet.dismissFarewell();return;}closePending=true;
+      win.webContents.executeJavaScript('window.prepareToClose ? window.prepareToClose() : Promise.resolve()').then(async()=>{await store.queue;let latest=null;if(!store.failed){latest=await store.load();if(latest)await store.backupNow(latest,'退出时备份');}win.hide();await pet.farewell(latest).catch(error=>diagnostic('pet-farewell-error',{message:error.message}));await pet.stop().catch(error=>diagnostic('pet-close-error',{message:error.message}));closing=true;win.close();}).catch(()=>{closePending=false;win.show();dialog.showMessageBox(win,{type:'error',message:'数据尚未保存，请稍后重试关闭。'});});
     });
+    await win.loadFile(path.join(__dirname,'../web/index.html'));
+    if(process.platform==='win32')win.show();
+    await pet.start(await store.load().catch(()=>null));
   }).catch(error=>{diagnostic('startup-error',{message:error.message});dialog.showErrorBox('一隅 Focus 启动失败',error.message);app.quit();});
   app.on('will-quit',()=>globalShortcut.unregisterAll());
   app.on('window-all-closed',()=>app.quit());

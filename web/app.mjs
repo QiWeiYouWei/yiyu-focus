@@ -8,9 +8,12 @@ import {orderedPresets,weeklyInsights} from './journey.mjs';
 import './android.mjs';
 import {setupQuickFocus} from './quick-focus.mjs';
 import {setupCalendar} from './calendar-ui.mjs';
+import {setupCourses} from './courses-ui.mjs';
+import {emptyTrack,levelLabels} from './courses.mjs';
 import {validQuantity,quantityLabel,quantityTotals} from './planning.mjs';
 import {dayKey,defaultState,elapsed,checkpoint,stats,validateState} from './core.mjs';
-import {icon,setButton,setText,initializeUI,entrance,feedback} from './ui.mjs';
+import {icon,setButton,setText,initializeUI,entrance,feedback,motionEnabled} from './ui.mjs';
+import {setupPetUI} from './pet-ui.mjs';
 import {setupSync} from './sync-ui.mjs';
 import {reachGoal,extendFocus,timerView,rememberHabit,recycle,recover} from './workflow.mjs';
 import {courseOf,courseLabel,courseNames,filterSessions,courseTotals,resumeTarget,weeklyReview} from './learning.mjs';
@@ -19,13 +22,17 @@ const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const id=()=>crypto.randomUUID();
 let state=defaultState(), page='focus', duration=15, reviewId=null, pinned=false, loadFailed=false, toastTimeout, lastSaved=0, syncUI=null, reviewIsEdit=false, selectedDay=null, draftTimer, lastMini='';
 const storageKey='yiyu-focus-v1';
+// Route scripted and native exits through the same save-and-farewell sequence.
+if(window.desktop?.close)window.close=()=>window.desktop.close();
+const petUI=setupPetUI({toast});
 const recordsEditor=setupRecordEditor({getState:()=>state,save,renderAll:render,toast});
 const relay=setupRelay({getState:()=>state,save,renderAll:render,toast,confirmAction,escape,onReceived:()=>{duration=state.active.duration;navigate('focus');if(state.interface?.autoZen)setZen(true);}});
 const quickFocus=setupQuickFocus({getState:()=>state,getPage:()=>page,isBlocked:()=>loadFailed,save,renderAll:render,startPreset,toast,confirmAction,recycle,escape,icon});
 const calendar=setupCalendar({getState:()=>state,save,renderAll:render,toast,confirmAction,recycle,startEvent,escape});
+const courses=setupCourses({getState:()=>state,save,renderAll:render,toast,confirmAction,startCourse,escape});
 const reminders=setupReminders({getState:()=>state,toast,navigate,showEvent:id=>calendar.show(id)});
 const growthCharts=setupGrowthCharts({getState:()=>state,getCourse:()=>selectedCourse('#growth-course'),onCourse:course=>{$('#growth-course').value=course===null?'all':JSON.stringify(course);$('#week-plan-course').value=course||'';renderGrowth();}});
-function linked(target){return {...(target?.eventId?{eventId:target.eventId}:{}),...(target?.presetId?{presetId:target.presetId}:{})};}
+function linked(target){return {...(target?.eventId?{eventId:target.eventId}:{}),...(target?.presetId?{presetId:target.presetId}:{}),...(target?.courseTrackId?{courseTrackId:target.courseTrackId}:{}),...(target?.topicId?{topicId:target.topicId}:{})};}
 function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>$('#toast').hidden=true,3500);}
 async function saveLocal(){
   if(loadFailed) throw Error('数据尚未正确载入，已停止写入以保护原文件');
@@ -46,7 +53,7 @@ function confirmAction(title,body){return new Promise(resolve=>{
 function setZen(enabled){document.body.classList.toggle('zen-mode',enabled);setButton($('#zen'),enabled?'退出沉浸':'沉浸',enabled?'collapse':'expand');$('#zen').setAttribute('aria-pressed',String(enabled));}
 function navigate(next){
   page=next;document.body.dataset.page=page;$$('.page').forEach(el=>el.hidden=el.id!==`page-${page}`);$$('[data-page]').forEach(el=>el.classList.toggle('active',el.dataset.page===page||(page==='quick'&&el.classList.contains('nav')&&el.dataset.page==='focus')));
-  $('#breadcrumb').innerHTML='我的空间 <span>/</span> '+({focus:'专注',calendar:'日历安排',quick:'快速专注',growth:'成长',inbox:'念头暂存',history:'学习足迹',settings:'偏好',account:'账号'}[page]);
+  $('#breadcrumb').innerHTML='我的空间 <span>/</span> '+({focus:'专注',courses:'课程追赶',calendar:'日历安排',quick:'快速专注',growth:'成长',inbox:'念头暂存',history:'学习足迹',settings:'偏好',account:'账号'}[page]);
   $$('.nav[data-page]').forEach(el=>{if(el.dataset.page===page||(page==='quick'&&el.dataset.page==='focus'))el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});if(page!=='focus')setZen(false);render();window.scrollTo({top:0,behavior:'instant'});entrance($('#page-'+page));
 }
 function sessionHTML(s){const marker=s.source==='manual'?'手动补记':s.corrected?'已修正':'';return `<article class="record"><div class="record-head"><strong>${escape(s.title)}</strong><span class="record-time">${pretty(s.seconds)} · ${s.completed?'已完成':'提前结束'}</span></div><div class="record-meta"><span class="course-badge">${escape(courseLabel(courseOf(s)))}</span><span class="muted">${formatDate(s.ended)}</span>${marker?`<span class="record-source">${marker}${s.corrected&&s.original?' · 原 '+pretty(s.original.seconds):''}</span>`:''}</div>${s.quantity?`<span class="quantity-record">${escape(quantityLabel(s.quantity))}</span>`:''}${s.note?`<p>${escape(s.note)}</p>`:''}${s.question?`<div class="record-question ${s.questionResolved?'resolved':''}"><span>${s.questionResolved?'已解决':'待解决'}</span><p>${escape(s.question)}</p><button class="text-button" data-resolve-question="${escape(s.id)}">${s.questionResolved?'重新记为待解决':'标记已解决'}</button></div>`:''}${s.nextStep?`<div class="record-next"><span>下一步</span> ${escape(s.nextStep)}</div>`:''}<button class="text-button" data-edit-time="${escape(s.id)}">修正时长 ↗</button><button class="text-button" data-edit-note="${escape(s.id)}">编辑收获与课程 ↗</button><button class="text-button record-delete" data-delete-session="${escape(s.id)}">移入回收站</button></article>`;}
@@ -87,7 +94,7 @@ function renderWeekReview(){
   const questions=review.sessions.filter(s=>s.question&&!s.questionResolved);$('#week-questions').innerHTML=questions.length?questions.slice(0,4).map(s=>`<div class="review-item"><p>${escape(s.question)}</p><small>${escape(s.title)} · ${escape(courseLabel(courseOf(s)))}</small></div>`).join(''):'<p class="muted">没有留下待解决的问题。</p>';
   $('#week-thoughts').innerHTML=review.thoughts.length?review.thoughts.slice(0,4).map(t=>`<div class="review-item thought-summary"><p>${escape(t.text)}</p><small>${t.count} 次暂存</small></div>`).join(''):'<p class="muted">这 7 天没有专注时暂存的念头。旧版念头仍可在“念头暂存”查看。</p>';
 }
-function render(){relay.render();quickFocus.render();renderHabitContext();renderCourses();renderResume();renderTimer();renderToday();renderTasks();renderThoughts();if(page==='calendar')calendar.render();if(page==='growth')renderGrowth();if(page==='history')renderHistory();if(page==='settings')renderSettings();if($('#day-dialog').open)renderDay();}
+function render(){relay.render();quickFocus.render();renderHabitContext();renderCourses();renderResume();renderTimer();renderToday();renderTasks();renderThoughts();if(page==='courses')courses.render();if(page==='calendar')calendar.render();if(page==='growth')renderGrowth();if(page==='history')renderHistory();if(page==='settings')renderSettings();if($('#day-dialog').open)renderDay();}
 function renderTimer(){
   const a=state.active;$('.timer-card').dataset.active=String(!!a);$('#zen-target').textContent=a?.title||$('#intention').value;$('#zen-position').textContent=[courseOf(a||state.draft||{}),a?.position||state.courseHabits?.find(h=>h.course===courseOf(a||state.draft||{}))?.position||''].filter(Boolean).join(' · ');const remaining=a?Math.max(0,a.duration*60000-elapsed(a)):duration*60000;
   const view=timerView(a,duration);$('#timer').textContent=view.text;$('#soft-end').hidden=!view.waiting;$('#start').hidden=view.waiting;
@@ -103,7 +110,7 @@ function renderTimer(){
   setButton($('#sound'),'提示音 '+(state.profile.sound?'开':'关'),state.profile.sound?'sound':'mute');$('#sound').setAttribute('aria-pressed',String(state.profile.sound));
   $('#gentle-tip').textContent=isBreak?'休息也是学习的一部分。放松肩膀，让眼睛离开屏幕。':'把手机放远一点，给注意力留一点空间。';
   $('#edit-quantity').disabled=!!a;$('#edit-quantity').textContent=quantityLabel(a?.kind==='focus'?a.quantity:state.draft?.quantity)||'学习量目标';
-  publishMini();document.title=a?`${$('#timer').textContent} · ${isBreak?'休息':'专注'} — 一隅 Focus`:'一隅 Focus';
+  const petStats=stats(state.sessions),lastSession=state.sessions.at(-1);publishMini();petUI.publish(a,motionEnabled(),{name:state.profile.name,course:a?.course||'',todaySeconds:petStats.today,streak:petStats.streak,lastSeconds:lastSession?.seconds||0,completed:lastSession?.completed||false});document.title=a?`${$('#timer').textContent} · ${isBreak?'休息':'专注'} — 一隅 Focus`:'一隅 Focus';
 }
 function renderToday(){const s=stats(state.sessions);$('#today-minutes').textContent=Math.floor(s.today/60);$('#daily-goal').textContent=state.profile.goal;$('#goal-progress').max=state.profile.goal;$('#goal-progress').value=s.today/60;$('#today-sessions').textContent=state.sessions.filter(r=>sessionParts(r).some(p=>p.day===dayKey())).length;$('#today-streak').textContent=s.streak;$('#goal-copy').textContent=s.today>=state.profile.goal*60?'今天的约定，已经做到啦。':s.today>0?`还差 ${Math.ceil(state.profile.goal-s.today/60)} 分钟，一小步一小步来。`:'第一段专注，从现在开始。';}
 function renderTasks(){
@@ -140,6 +147,7 @@ function renderInsights(){const insights=weeklyInsights(state,Date.now(),selecte
 function renderSettings(){$('#auto-zen').checked=!!state.interface?.autoZen;$('#celebration-mode').value=state.interface?.celebration||'leaf';for(const key of ['name','motto','goal','duration','breakMinutes'])$('#settings-form').elements[key].value=state.profile[key];renderTrash();refreshBackups();loadDesktopPreferences();}
 async function notify(text){if(window.desktop)await window.desktop.notify(text).catch(()=>{});if(!state.profile.sound)return;try{const context=new AudioContext();const oscillator=context.createOscillator(),gain=context.createGain();oscillator.connect(gain);gain.connect(context.destination);oscillator.type='sine';oscillator.frequency.value=659;gain.gain.setValueAtTime(.1,context.currentTime);gain.gain.exponentialRampToValueAtTime(.001,context.currentTime+1.3);oscillator.start();oscillator.stop(context.currentTime+1.3);oscillator.onended=()=>context.close();}catch{}}
 function startEvent(event){if(state.active){toast('先结束当前计时，再开始新的安排。');return;}startPreset({...event,minutes:event.focusMinutes||state.profile.duration,eventId:event.id});}
+function startCourse(target){if(loadFailed){toast('记录尚未正确载入，请先恢复本机数据。');return;}if(state.active){toast('先结束当前计时，再开始新的知识点。');return;}setDraft(target);duration=target.minutes;$('#custom-minutes').value='';start();navigate('focus');}
 function startPreset(preset){if(loadFailed){toast('记录尚未正确载入，请先恢复本机数据。');return;}if(state.active){toast('先结束当前计时，再开始新的事件。');return;}setDraft({...preset,...(!preset.eventId?{presetId:preset.id}:{})});duration=preset.minutes;$('#custom-minutes').value='';start();navigate('focus');}
 function start(){
   if(state.active?.handoffId){toast('这一段正在交接，请刷新接力或撤回后继续。');return;}
@@ -155,6 +163,7 @@ window.mobileBack=()=>{const dialog=$('dialog[open]');if(dialog){if(dialog.id===
 window.prepareToClose=async()=>{if(loadFailed)return;clearTimeout(draftTimer);if(state.active)state.active=checkpoint(state.active,Date.now(),true);await save();};
 function openReview(session,edit=false){
   reviewId=session.id;reviewIsEdit=edit;
+  const topic=state.courseTracks?.find(c=>c.id===session.courseTrackId)?.topics.find(t=>t.id===session.topicId);$('#review-course-progress').hidden=!topic;$('#review-topic-title').textContent=topic?.title||'';$('#review-mastery').innerHTML='<option value="">暂不更新掌握程度</option>'+levelLabels.map((label,i)=>'<option value="'+i+'">'+label+'</option>').join('');$('#review-mastery').value='';
   $('#review-target').value=session.quantity?.target??'';$('#review-unit').value=session.quantity?.unit||'页';$('#review-actual').value=session.quantity?.actual??'';$('#review-quantity').open=!!session.quantity;
   $('#review-title').textContent=edit?'为这段学习，补一点记录。':session.completed?'这一段，认真度过了。':'已经付出的时间，都算数。';
   $('#review-description').textContent=`${session.title} · 专注了 ${pretty(session.seconds)}`;$('#review-note').value=session.note;$('#review-question').value=session.question||'';$('#review-question').closest('details').open=!!session.question;$('#review-position').value=session.position||state.courseHabits?.find(h=>h.course===courseOf(session))?.position||'';$('#review-next-step').value=session.nextStep||'';$('#review-course').value=courseOf(session);
@@ -171,12 +180,13 @@ function finish(){
   state.sessions.push(session);const result=milestone(beforeSessions,state.sessions,state.profile.goal);if(result&&!(state.celebrated||[]).includes(result.key)){state.celebrated=[...(state.celebrated||[]),result.key].slice(-1000);save().then(()=>showCelebration(result.text,state.interface?.celebration||'leaf')).catch(()=>{});}else persist();setZen(false);render();
   if($('#thought-dialog').open)$('#thought-dialog').close();if($('#return-dialog').open)$('#return-dialog').close();
   if($('#confirm-dialog').open)$('#confirm-no').click();
-  openReview(session);if(completed)notify('这一段专注完成了。留下收获，休息一下吧。');
+  petUI.celebrate(session.id);openReview(session);if(completed)notify('这一段专注完成了。留下收获，休息一下吧。');
 }
 function saveReview(saveChanges=true){
   const s=state.sessions.find(s=>s.id===reviewId),editing=reviewIsEdit;
   if(s&&saveChanges){let quantity;try{quantity=readQuantity('review-target','review-unit','review-actual');}catch(error){toast(error.message);return false;}if(quantity)s.quantity=quantity;else delete s.quantity;const previous={title:s.nextStep||s.title,course:courseOf(s)};const latest=state.sessions.every(other=>other.ended<=s.ended);s.note=$('#review-note').value.trim();const question=$('#review-question').value.trim();if(question!==s.question)s.questionResolved=false;s.question=question;s.position=$('#review-position').value.trim();s.course=$('#review-course').value.trim();s.nextStep=$('#review-next-step').value.trim();if(s.course&&state.sessions.every(other=>courseOf(other)!==s.course||other.ended<=s.ended)){const habit=state.courseHabits?.find(h=>h.course===s.course);rememberHabit(state,{course:s.course,minutes:habit?.minutes||state.profile.duration,material:habit?.material||'',position:s.position});}
     for(const thought of state.thoughts){if(thought.sessionId===s.id)thought.course=s.course;}
+    const mastery=$('#review-mastery').value;if(mastery!==''){const track=state.courseTracks?.find(c=>c.id===s.courseTrackId),topic=track?.topics.find(t=>t.id===s.topicId);if(topic){topic.level=Number(mastery);track.updated=Date.now();}}
     if(!state.active&&(!editing||latest&&(!state.draft?.title||(state.draft.title===previous.title&&courseOf(state.draft)===previous.course)))){const title=s.nextStep||s.title;state.draft={title,course:s.course,sessionId:s.id,...linked(s)};$('#intention').value=title;$('#focus-course').value=s.course;}
     persist();
   }
@@ -184,7 +194,7 @@ function saveReview(saveChanges=true){
 }
 function addThought(text,source='inbox',reason){
   const a=state.active,thought={id:id(),text:text.trim()||'刚刚走神了，已经重新回来。',created:Date.now(),done:false,...(reason?{reason}:{}),source:source==='focus'&&a?.kind==='focus'?'focus':'inbox',course:source==='focus'&&a?.kind==='focus'?courseOf(a):'',...(source==='focus'&&a?.kind==='focus'?{sessionId:a.id}:{})};
-  state.thoughts.push(thought);return save().then(()=>{renderThoughts();toast('已经放好了。现在，回到眼前这一小步。');}).catch(error=>{state.thoughts=state.thoughts.filter(t=>t.id!==thought.id);throw error;});
+  state.thoughts.push(thought);return save().then(()=>{renderThoughts();if(thought.source==='focus')petUI.encourage('returned',thought.id);toast('已经放好了。现在，回到眼前这一小步。');}).catch(error=>{state.thoughts=state.thoughts.filter(t=>t.id!==thought.id);throw error;});
 }
 $$('[data-page]').forEach(el=>el.addEventListener('click',()=>navigate(el.dataset.page)));
 $('.brand').addEventListener('click',e=>{e.preventDefault();navigate('focus');});
@@ -276,6 +286,8 @@ async function init(){
   initializeUI();document.body.dataset.page='focus';setZen(false);setButton($('#pin'),'置顶','pin');setButton($('#account-badge'),'账号同步','cloud');
   try{const data=window.desktop?await window.desktop.load():JSON.parse(localStorage.getItem(storageKey)||'null');if(data)state=validateState(data);}
   catch(e){loadFailed=true;$('#save-error').hidden=false;$('#save-error').textContent=e.message+'。为保护原文件，已停用写入，请检查本地数据。';$('#start').disabled=true;}
+  if(!loadFailed&&state.courseTracks===undefined){state.courseTracks=[emptyTrack('模拟电子技术基础','course-analog'),emptyTrack('信号与系统','course-signals')];state.catchupBudget=60;await persist();}
+  if(!loadFailed&&state.courseSemesters===undefined){state.courseSemesters=[];state.currentCourseSemester='';state.courseSemesterFilter='all';await persist();}
   if(state.active&&window.desktop?.platform!=='android'){state.active={...state.active,running:false,anchor:Date.now()};toast('上次的专注已暂停，准备好后可以继续。');}else if(state.active?.running&&elapsed(state.active)>=state.active.duration*60000){if(state.active.kind==='focus')state.active=reachGoal(state.active);else state.active=null;}
   duration=state.active?.kind==='focus'?state.active.duration:state.profile.duration;const target=resumeTarget(state);if(!state.active&&target){$('#intention').value=target.title;$('#focus-course').value=target.course;}$('#today-date').textContent=new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});render();if(!state.active)applyHabit();
   if(!loadFailed){try{syncUI=await setupSync({getState:()=>state,applyState:next=>{state=next;if(!state.active)duration=state.profile.duration;if(page==='settings'){renderTimer();renderToday();}else{render();if(!state.active)applyHabit();}},saveLocal,confirmAction,toast});}catch(e){$('#sync-description').textContent='账号同步暂不可用：'+e.message+'；本地专注不受影响。';}}

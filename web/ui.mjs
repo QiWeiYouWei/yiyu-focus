@@ -1,5 +1,6 @@
 // A small, local icon and motion layer. No network assets or animation runtime.
 const paths={
+  courses:'<path d="M12 6c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v15"/>',
   'chevron-left':'<path d="m14 6-6 6 6 6"/>',
   'chevron-right':'<path d="m10 6 6 6-6 6"/>',
   calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 5h2m4 0h2"/>',

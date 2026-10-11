@@ -40,6 +40,7 @@ jobs:
           npm run test:growth
           npm run test:evolution
           npm run test:relay
+          npm run test:courses
       - name: Build Windows portable app
         run: npm run dist -- --publish never --config.electronDist=node_modules/electron/dist
       - name: Verify final Windows executable
